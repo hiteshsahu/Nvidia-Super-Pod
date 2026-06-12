@@ -1,36 +1,4 @@
-# Hardware Requirements — NVIDIA SuperPod Lab
-
----
-
-## Can I Run This Project?
-
-| Platform                    | GPU Workloads | Kubernetes / Helm | Terraform / Ansible |
-|-----------------------------|:-------------:|:-----------------:|:-------------------:|
-| **Windows + NVIDIA GPU**    |  ✅ via WSL2   | ✅ Docker Desktop  |       ✅ WSL2        |
-| **macOS (any chip)**        |       ❌       | ✅ kind / minikube |      ✅ native       |
-| **Linux + NVIDIA GPU**      |   ✅ native    |  ✅ kubeadm / k3s  |      ✅ native       |
-| **Linux (no GPU)**          |       ❌       | ✅ kind / minikube |      ✅ native       |
-| **AWS EC2 g4dn / p3 / p4d** | ✅ full stack  |     ✅ kubeadm     |    ✅ full stack     |
-
----
-
-## AWS — Minimum Configuration (as provisioned by Terraform)
-
-| Resource      | Specification                                    |
-|---------------|--------------------------------------------------|
-| Instance type | `g4dn.xlarge`                                    |
-| GPU           | NVIDIA Tesla T4                                  |
-| VRAM          | 16 GB GDDR6                                      |
-| CUDA Cores    | 2,560                                            |
-| Tensor Cores  | 320 (2nd gen)                                    |
-| GPU TDP       | 70 W                                             |
-| vCPU          | 4 × Intel Cascade Lake                           |
-| RAM           | 16 GB DDR4                                       |
-| Network       | Up to 25 Gbps                                    |
-| PCIe          | Gen3 × 16                                        |
-| Root EBS      | 100 GiB gp3 — OS, drivers, Docker images         |
-| Data EBS      | 200 GiB gp3 — models and datasets at `/mnt/data` |
-| Elastic IP    | 1 — stable public address across stop/start      |
+# Running Locally — NVIDIA SuperPod Lab
 
 ---
 

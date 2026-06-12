@@ -4,17 +4,17 @@
 
 ## Can I Run This Locally?
 
-| Scenario                    | GPU Workloads | Kubernetes / Helm | Terraform Plan |
-|-----------------------------|:-------------:|:-----------------:|:--------------:|
-| Mac (Apple Silicon / Intel) |       ❌       | ✅ (kind/minikube) |       ✅        |
-| Linux without NVIDIA GPU    |       ❌       | ✅ (kind/minikube) |       ✅        |
-| Linux with NVIDIA GPU       |       ✅       |         ✅         |       ✅        |
-| AWS EC2 g4dn / p3 / p4d     |       ✅       |         ✅         |       ✅        |
-
-> Mac users can develop and test all manifests, Helm values, Ansible playbooks, and Terraform plans locally. GPU
-> workloads need real NVIDIA hardware.
+| Platform                    | GPU Workloads | Kubernetes / Helm | Terraform / Ansible |
+|-----------------------------|:-------------:|:-----------------:|:-------------------:|
+| **macOS (any chip)**        |       ❌       | ✅ kind / minikube |      ✅ native       |
+| **Linux (no GPU)**          |       ❌       | ✅ kind / minikube |      ✅ native       |
+| **Windows + NVIDIA GPU**    |  ✅ via WSL2   | ✅ Docker Desktop  |       ✅ WSL2        |
+| **Linux + NVIDIA GPU**      |   ✅ native    |  ✅ kubeadm / k3s  |      ✅ native       |
+| **AWS EC2 g4dn / p3 / p4d** | ✅ full stack  |     ✅ kubeadm     |    ✅ full stack     |
 
 ---
+> Mac users can develop and test all manifests, Helm values, Ansible playbooks, and Terraform plans locally. GPU
+> workloads need real NVIDIA hardware.
 
 ## Minimum AWS Configuration (as provisioned)
 
@@ -33,6 +33,7 @@
 | Root EBS      | `100 GiB gp3` — OS, drivers, Docker images         |
 | Data EBS      | `200 GiB gp3` — models and datasets at `/mnt/data` |
 | Elastic IP    | `1` — stable public address across stop/start      |
+
 
 ---
 

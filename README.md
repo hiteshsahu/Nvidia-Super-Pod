@@ -129,13 +129,17 @@ nvidia-superpod/
 
 ---
 
-## ▶️ Getting Started
+# ▶️ Getting Started
 
-### ⚡ Prerequisites
+## ⚡ Prerequisites
 
-### ℹ️  Check [supported Hardware](./HARDWARE.md)
+### ℹ️  [supported Hardware](./HARDWARE.md) 
+Check what hardware is supported `Linux > Windows > Macbook`
 
-### 🖥️ Softwares
+### 👨🏻‍💻 **[Running Locally](./docs/RunningLocally.md)**
+Check what Development & Testing steps you can do locally on `Linux/Windows/Macbook`
+
+### 🖥️ **Softwares**
 
 Required tools
 - terraform >= 1.5

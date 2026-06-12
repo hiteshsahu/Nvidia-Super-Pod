@@ -4,12 +4,12 @@
 
 ## Can I Run This Locally?
 
-| Scenario                    | GPU Workloads |  Kubernetes / Helm  | Terraform Plan |
-|-----------------------------|:-------------:|:-------------------:|:--------------:|
-| Mac (Apple Silicon / Intel) |      No       | Yes (kind/minikube) |      Yes       |
-| Linux without NVIDIA GPU    |      No       | Yes (kind/minikube) |      Yes       |
-| Linux with NVIDIA GPU       |      Yes      |         Yes         |      Yes       |
-| AWS EC2 g4dn / p3 / p4d     |      Yes      |         Yes         |      Yes       |
+| Scenario                    | GPU Workloads | Kubernetes / Helm | Terraform Plan |
+|-----------------------------|:-------------:|:-----------------:|:--------------:|
+| Mac (Apple Silicon / Intel) |       ❌       | ✅ (kind/minikube) |       ✅        |
+| Linux without NVIDIA GPU    |       ❌       | ✅ (kind/minikube) |       ✅        |
+| Linux with NVIDIA GPU       |       ✅       |         ✅         |       ✅        |
+| AWS EC2 g4dn / p3 / p4d     |       ✅       |         ✅         |       ✅        |
 
 > Mac users can develop and test all manifests, Helm values, Ansible playbooks, and Terraform plans locally. GPU
 > workloads need real NVIDIA hardware.
@@ -18,37 +18,37 @@
 
 ## Minimum AWS Configuration (as provisioned)
 
-| Resource      | Specification                                    |
-|---------------|--------------------------------------------------|
-| Instance type | `g4dn.xlarge`                                    |
-| GPU           | NVIDIA Tesla T4                                  |
-| VRAM          | 16 GB GDDR6                                      |
-| CUDA Cores    | 2,560                                            |
-| Tensor Cores  | 320 (2nd gen)                                    |
-| GPU TDP       | 70 W                                             |
-| vCPU          | 4 × Intel Cascade Lake                           |
-| RAM           | 16 GB DDR4                                       |
-| Network       | Up to 25 Gbps                                    |
-| PCIe          | Gen3 × 16                                        |
-| Root EBS      | 100 GiB gp3 — OS, drivers, Docker images         |
-| Data EBS      | 200 GiB gp3 — models and datasets at `/mnt/data` |
-| Elastic IP    | 1 — stable public address across stop/start      |
+| Resource      | Specification                                      |
+|---------------|----------------------------------------------------|
+| Instance type | `g4dn.xlarge`                                      |
+| GPU           | NVIDIA Tesla T4                                    |
+| VRAM          | `16 GB GDDR6`                                      |
+| CUDA Cores    | `2,560`                                            |
+| Tensor Cores  | `320` (2nd gen)                                    |
+| GPU TDP       | `70 W`                                             |
+| vCPU          | `4 × Intel Cascade Lake`                           |
+| RAM           | `16 GB DDR4`                                       |
+| Network       | `Up to 25 Gbps`                                    |
+| PCIe          | `Gen3 × 16`                                        |
+| Root EBS      | `100 GiB gp3` — OS, drivers, Docker images         |
+| Data EBS      | `200 GiB gp3` — models and datasets at `/mnt/data` |
+| Elastic IP    | `1` — stable public address across stop/start      |
 
 ---
 
 ## Software Stack (installed automatically by cloud-init)
 
-| Software                 | Version   | Purpose                                |
-|--------------------------|-----------|----------------------------------------|
-| Ubuntu                   | 22.04 LTS | Base OS                                |
-| NVIDIA Driver            | 535       | Minimum for CUDA 12.x (requires ≥ 525) |
-| CUDA Toolkit             | 12-3      | GPU compute runtime                    |
-| Docker CE                | latest    | Container runtime                      |
-| NVIDIA Container Toolkit | latest    | GPU access inside containers           |
-| kubectl                  | 1.29      | Kubernetes CLI                         |
-| Helm                     | 3.x       | Package manager for Kubernetes         |
-| kubeadm / kubelet        | 1.29      | Installed by Ansible playbook 01       |
-| DCGM                     | latest    | GPU telemetry daemon                   |
+| Software                 | Version     | Purpose                                |
+|--------------------------|-------------|----------------------------------------|
+| Ubuntu                   | `22.04 LTS` | Base OS                                |
+| NVIDIA Driver            | `535`       | Minimum for CUDA 12.x (requires ≥ 525) |
+| CUDA Toolkit             | `12-3`      | GPU compute runtime                    |
+| Docker CE                | `latest`    | Container runtime                      |
+| NVIDIA Container Toolkit | `latest`    | GPU access inside containers           |
+| kubectl                  | `1.29`      | Kubernetes CLI                         |
+| Helm                     | `3.x`       | Package manager for Kubernetes         |
+| kubeadm / kubelet        | `1.29`      | Installed by Ansible playbook 01       |
+| DCGM                     | `latest`    | GPU telemetry daemon                   |
 
 ---
 

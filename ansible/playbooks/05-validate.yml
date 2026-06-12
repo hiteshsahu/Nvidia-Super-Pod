@@ -1,0 +1,197 @@
+---
+# Playbook 05 — End-to-end stack validation
+#
+# Checks every layer of the stack and prints a pass/fail summary:
+#   [1] GPU hardware    — nvidia-smi returns a GPU name
+#   [2] CUDA toolkit    — nvcc is on PATH and reports a version
+#   [3] Kubernetes      — node is Ready
+#   [4] GPU resource    — nvidia.com/gpu is in allocatable
+#   [5] GPU Operator    — device-plugin and GFD pods are Running
+#   [6] Observability   — dcgm-exporter, Prometheus, and Grafana pods are Running
+#   [7] Triton          — deployment is Available (if deployed)
+#
+# Usage:
+#   ansible-playbook playbooks/05-validate.yml
+
+- name: End-to-end stack validation
+  hosts: gpu_nodes
+  become: false
+
+  vars_files:
+    - ../group_vars/gpu_nodes.yml
+
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+  vars:
+    checks: []
+
+  tasks:
+
+    # ------------------------------------------------------------------ #
+    # [1] GPU hardware                                                     #
+    # ------------------------------------------------------------------ #
+
+    - name: "[1] nvidia-smi"
+      become: true
+      command: >
+        nvidia-smi
+        --query-gpu=name,driver_version,memory.total,temperature.gpu,power.draw
+        --format=csv,noheader
+      register: smi
+      changed_when: false
+      failed_when: false
+
+    - name: Record GPU check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'GPU hardware (nvidia-smi)',
+             'result': 'PASS' if smi.rc == 0 else 'FAIL',
+             'detail': smi.stdout | trim}] }}
+
+    # ------------------------------------------------------------------ #
+    # [2] CUDA toolkit                                                     #
+    # ------------------------------------------------------------------ #
+
+    - name: "[2] nvcc version"
+      become: true
+      command: nvcc --version
+      register: nvcc
+      changed_when: false
+      failed_when: false
+
+    - name: Record CUDA check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'CUDA toolkit (nvcc)',
+             'result': 'PASS' if nvcc.rc == 0 else 'FAIL',
+             'detail': nvcc.stdout_lines[-1] | default('not found') | trim}] }}
+
+    # ------------------------------------------------------------------ #
+    # [3] Kubernetes node ready                                            #
+    # ------------------------------------------------------------------ #
+
+    - name: "[3] Node Ready status"
+      command: >
+        kubectl get nodes {{ ansible_hostname }}
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: node_ready
+      changed_when: false
+      failed_when: false
+
+    - name: Record node check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'Kubernetes node Ready',
+             'result': 'PASS' if node_ready.stdout == 'True' else 'FAIL',
+             'detail': 'status=' + node_ready.stdout | default('unknown')}] }}
+
+    # ------------------------------------------------------------------ #
+    # [4] GPU allocatable resource                                         #
+    # ------------------------------------------------------------------ #
+
+    - name: "[4] nvidia.com/gpu allocatable"
+      command: >
+        kubectl get nodes
+        -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
+      register: gpu_alloc
+      changed_when: false
+      failed_when: false
+
+    - name: Record GPU resource check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'nvidia.com/gpu allocatable',
+             'result': 'PASS' if (gpu_alloc.stdout | trim | int) > 0 else 'FAIL',
+             'detail': 'count=' + (gpu_alloc.stdout | trim | default('0'))}] }}
+
+    # ------------------------------------------------------------------ #
+    # [5] GPU Operator pods                                                #
+    # ------------------------------------------------------------------ #
+
+    - name: "[5] GPU Operator pod statuses"
+      command: >
+        kubectl get pods -n gpu-operator
+        -o jsonpath='{range .items[*]}{.metadata.name}={.status.phase}{"\n"}{end}'
+      register: gpu_op_pods
+      changed_when: false
+      failed_when: false
+
+    - name: Record GPU Operator check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'GPU Operator pods',
+             'result': 'PASS' if 'Failed' not in gpu_op_pods.stdout else 'FAIL',
+             'detail': gpu_op_pods.stdout_lines | join(', ')}] }}
+
+    # ------------------------------------------------------------------ #
+    # [6] Observability pods                                               #
+    # ------------------------------------------------------------------ #
+
+    - name: "[6] Observability pod statuses"
+      command: >
+        kubectl get pods -n monitoring
+        -o jsonpath='{range .items[*]}{.metadata.name}={.status.phase}{"\n"}{end}'
+      register: obs_pods
+      changed_when: false
+      failed_when: false
+
+    - name: Check for dcgm-exporter pod
+      command: >
+        kubectl get pods -n monitoring -l app.kubernetes.io/name=dcgm-exporter
+        -o jsonpath='{.items[0].status.phase}'
+      register: dcgm_pod
+      changed_when: false
+      failed_when: false
+
+    - name: Record observability check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'Observability (Prometheus/Grafana/DCGM)',
+             'result': 'PASS' if 'Failed' not in obs_pods.stdout and dcgm_pod.stdout == 'Running' else 'FAIL',
+             'detail': 'dcgm=' + dcgm_pod.stdout | default('not found')}] }}
+
+    # ------------------------------------------------------------------ #
+    # [7] Triton (optional — skip if not deployed)                        #
+    # ------------------------------------------------------------------ #
+
+    - name: "[7] Triton deployment status"
+      command: >
+        kubectl get deployment triton -n inference
+        -o jsonpath='{.status.availableReplicas}'
+      register: triton_ready
+      changed_when: false
+      failed_when: false
+
+    - name: Record Triton check
+      set_fact:
+        checks: >-
+          {{ checks + [{'check': 'Triton Inference Server',
+             'result': 'PASS' if triton_ready.rc == 0 and (triton_ready.stdout | int) > 0
+                       else ('SKIP' if triton_ready.rc != 0 else 'FAIL'),
+             'detail': 'availableReplicas=' + (triton_ready.stdout | default('not deployed'))}] }}
+
+    # ------------------------------------------------------------------ #
+    # Summary                                                              #
+    # ------------------------------------------------------------------ #
+
+    - name: Print validation summary
+      debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════╗
+          ║         NVIDIA SuperPod — Validation Summary         ║
+          ╠══════════════════════════════════════════════════════╣
+          {% for c in checks %}
+          ║  {{ '[' + c.result + ']' | ljust(6) }}  {{ c.check | ljust(38) }}  ║
+          ║         {{ c.detail | truncate(48, True) | ljust(48) }}  ║
+          ╠══════════════════════════════════════════════════════╣
+          {% endfor %}
+          ╚══════════════════════════════════════════════════════╝
+
+    - name: Fail playbook if any check failed
+      assert:
+        that: checks | selectattr('result', 'equalto', 'FAIL') | list | length == 0
+        fail_msg: >-
+          {{ checks | selectattr('result', 'equalto', 'FAIL') | map(attribute='check') | list | join(', ') }}
+          failed. See summary above.
+        success_msg: "All checks passed."

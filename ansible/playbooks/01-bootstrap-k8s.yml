@@ -1,0 +1,191 @@
+---
+# Playbook 01 — Bootstrap Kubernetes on the GPU node
+#
+# What it does:
+#   1. Waits for cloud-init to finish (driver + CUDA already installed)
+#   2. Installs kubeadm and kubelet (kubectl was installed by cloud-init)
+#   3. Runs kubeadm init with Flannel CNI CIDR
+#   4. Writes kubeconfig for the ubuntu user
+#   5. Deploys Flannel CNI
+#   6. Removes the control-plane taint so workloads can schedule
+#   7. Labels the node for the GPU Operator
+#
+# Usage:
+#   ansible-playbook playbooks/01-bootstrap-k8s.yml
+#
+# Idempotent: skips kubeadm init if /etc/kubernetes/admin.conf already exists.
+
+- name: Bootstrap Kubernetes on GPU node
+  hosts: gpu_nodes
+  become: true
+
+  vars_files:
+    - ../group_vars/gpu_nodes.yml
+
+  tasks:
+
+    # ------------------------------------------------------------------ #
+    # Pre-flight                                                           #
+    # ------------------------------------------------------------------ #
+
+    - name: Wait for cloud-init to finish
+      command: cloud-init status --wait
+      changed_when: false
+      timeout: 600
+
+    - name: Verify GPU is available (nvidia-smi)
+      command: nvidia-smi --query-gpu=name --format=csv,noheader
+      register: gpu_check
+      changed_when: false
+      failed_when: gpu_check.rc != 0
+
+    - name: Show detected GPU
+      debug:
+        msg: "GPU detected: {{ gpu_check.stdout | trim }}"
+
+    # ------------------------------------------------------------------ #
+    # Install kubeadm + kubelet (kubectl already installed by cloud-init) #
+    # ------------------------------------------------------------------ #
+
+    - name: Install kubeadm and kubelet
+      apt:
+        name:
+          - "kubeadm"
+          - "kubelet"
+        state: present
+        update_cache: true
+
+    - name: Hold kubeadm, kubelet, kubectl at current version
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubeadm
+        - kubelet
+        - kubectl
+
+    - name: Enable and start kubelet
+      systemd:
+        name: kubelet
+        enabled: true
+        state: started
+
+    # ------------------------------------------------------------------ #
+    # Kubernetes cluster initialisation                                   #
+    # ------------------------------------------------------------------ #
+
+    - name: Check if cluster is already initialised
+      stat:
+        path: /etc/kubernetes/admin.conf
+      register: kubeconfig_stat
+
+    - name: Initialise Kubernetes cluster
+      when: not kubeconfig_stat.stat.exists
+      block:
+
+        - name: Run kubeadm init
+          command: >
+            kubeadm init
+            --pod-network-cidr={{ pod_network_cidr }}
+            --service-cidr={{ service_cidr }}
+            --kubernetes-version=stable-{{ k8s_version }}
+            --node-name={{ ansible_hostname }}
+          register: kubeadm_output
+
+        - name: Print kubeadm init output
+          debug:
+            msg: "{{ kubeadm_output.stdout_lines }}"
+
+    # ------------------------------------------------------------------ #
+    # kubeconfig for ubuntu user                                          #
+    # ------------------------------------------------------------------ #
+
+    - name: Create .kube directory for ubuntu
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copy admin kubeconfig to ubuntu home
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/ubuntu/.kube/config
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+        remote_src: true
+
+    # ------------------------------------------------------------------ #
+    # CNI — Flannel                                                        #
+    # ------------------------------------------------------------------ #
+
+    - name: Deploy Flannel CNI
+      become_user: ubuntu
+      command: >
+        kubectl apply -f
+        https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: flannel_result
+      changed_when: >
+        'created' in flannel_result.stdout or
+        'configured' in flannel_result.stdout
+
+    # ------------------------------------------------------------------ #
+    # Single-node: remove control-plane taint                             #
+    # ------------------------------------------------------------------ #
+
+    - name: Remove control-plane taint (allows workloads on this node)
+      become_user: ubuntu
+      command: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: taint_result
+      # Already untainted on subsequent runs — that's fine.
+      failed_when: >
+        taint_result.rc != 0 and
+        'not found' not in taint_result.stderr
+      changed_when: "'untainted' in taint_result.stdout"
+
+    # ------------------------------------------------------------------ #
+    # Wait for node ready                                                  #
+    # ------------------------------------------------------------------ #
+
+    - name: Wait for node to reach Ready state (up to 5 min)
+      become_user: ubuntu
+      command: kubectl wait --for=condition=Ready node --all --timeout=5m
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: false
+
+    # ------------------------------------------------------------------ #
+    # GPU label — required by GPU Operator webhook                        #
+    # ------------------------------------------------------------------ #
+
+    - name: Label node for GPU Operator
+      become_user: ubuntu
+      command: >
+        kubectl label node {{ ansible_hostname }}
+        nvidia.com/gpu.present=true --overwrite
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: label_result
+      changed_when: "'labeled' in label_result.stdout"
+
+    # ------------------------------------------------------------------ #
+    # Summary                                                              #
+    # ------------------------------------------------------------------ #
+
+    - name: Show node status
+      become_user: ubuntu
+      command: kubectl get nodes -o wide
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: nodes_out
+      changed_when: false
+
+    - name: Print node status
+      debug:
+        msg: "{{ nodes_out.stdout_lines }}"

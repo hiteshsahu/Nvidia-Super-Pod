@@ -1,0 +1,24 @@
+---
+# Shared variables for all GPU nodes.
+# Version pins here must stay in sync with terraform/variables.tf defaults.
+
+# --- Software versions ---
+k8s_version:                "1.29"       # used for apt repo and kubeadm
+driver_version:             "535"        # NVIDIA driver major version
+cuda_version:               "12-3"       # CUDA toolkit apt package suffix
+gpu_operator_version:       "v24.3.0"
+dcgm_exporter_version:      "3.3.5"
+kube_prometheus_stack_version: "58.7.2"
+
+# --- Kubernetes networking ---
+pod_network_cidr:           "10.244.0.0/16"   # Flannel default
+service_cidr:               "10.96.0.0/12"    # kubeadm default
+
+# --- Paths ---
+kubeconfig_path:            "/home/ubuntu/.kube/config"
+cuda_samples_path:          "/opt/cuda-samples"
+data_mount_path:            "/mnt/data"
+
+# --- Grafana ---
+grafana_admin_password:     "superpod-changeme"   # matches prometheus/values.yaml
+grafana_nodeport:           30300

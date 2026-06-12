@@ -1,0 +1,161 @@
+---
+# Playbook 02 — Deploy GPU stack via Helm
+#
+# Install order (each step waits for the previous):
+#   1. Namespaces
+#   2. NVIDIA GPU Operator  (gpu-operator ns)
+#   3. kube-prometheus-stack  (monitoring ns)  — Prometheus + Grafana + node-exporter
+#   4. DCGM Exporter  (monitoring ns)
+#
+# Usage:
+#   ansible-playbook playbooks/02-deploy-stack.yml
+#
+# Idempotent: checks helm status before each install; skips if already deployed.
+# To upgrade an existing release: helm upgrade ... or add --set tags at the command line.
+
+- name: Deploy GPU observability stack via Helm
+  hosts: gpu_nodes
+  become: false
+
+  vars_files:
+    - ../group_vars/gpu_nodes.yml
+
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+  tasks:
+
+    # ------------------------------------------------------------------ #
+    # Namespaces                                                           #
+    # ------------------------------------------------------------------ #
+
+    - name: Apply cluster namespaces
+      command: >
+        kubectl apply -f
+        {{ playbook_dir }}/../../kubernetes/base/namespaces.yaml
+      register: ns_result
+      changed_when: >
+        'created' in ns_result.stdout or
+        'configured' in ns_result.stdout
+
+    # ------------------------------------------------------------------ #
+    # Helm repos                                                           #
+    # ------------------------------------------------------------------ #
+
+    - name: Add NVIDIA Helm repo
+      command: helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+      register: r
+      changed_when: "'has been added' in r.stdout"
+      failed_when: r.rc != 0 and 'already exists' not in r.stderr
+
+    - name: Add prometheus-community Helm repo
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      register: r
+      changed_when: "'has been added' in r.stdout"
+      failed_when: r.rc != 0 and 'already exists' not in r.stderr
+
+    - name: Update all Helm repos
+      command: helm repo update
+      changed_when: false
+
+    # ------------------------------------------------------------------ #
+    # GPU Operator                                                         #
+    # ------------------------------------------------------------------ #
+
+    - name: Check if GPU Operator is already installed
+      command: helm status gpu-operator -n gpu-operator
+      register: gpu_op_status
+      failed_when: false
+      changed_when: false
+
+    - name: Install GPU Operator
+      when: gpu_op_status.rc != 0
+      command: >
+        helm install gpu-operator nvidia/gpu-operator
+        --namespace gpu-operator
+        --version {{ gpu_operator_version }}
+        -f {{ playbook_dir }}/../../kubernetes/gpu-operator/values.yaml
+        --wait --timeout=10m
+
+    - name: Wait for GPU Operator pods to be ready
+      command: >
+        kubectl wait pod --all -n gpu-operator
+        --for=condition=Ready --timeout=10m
+        --field-selector=status.phase=Running
+      changed_when: false
+      # Some pods (validator) complete rather than stay Running — ignore their absence.
+      failed_when: false
+
+    - name: Verify nvidia.com/gpu is allocatable
+      command: >
+        kubectl get nodes -o jsonpath=
+        '{.items[*].status.allocatable.nvidia\.com/gpu}'
+      register: gpu_alloc
+      changed_when: false
+      failed_when: gpu_alloc.stdout | trim == ''
+
+    - name: Show GPU allocatable count
+      debug:
+        msg: "nvidia.com/gpu allocatable: {{ gpu_alloc.stdout | trim }}"
+
+    # ------------------------------------------------------------------ #
+    # kube-prometheus-stack (Prometheus + Grafana + node-exporter)        #
+    # ------------------------------------------------------------------ #
+
+    - name: Check if kube-prometheus-stack is already installed
+      command: helm status prometheus -n monitoring
+      register: prom_status
+      failed_when: false
+      changed_when: false
+
+    - name: Install kube-prometheus-stack
+      when: prom_status.rc != 0
+      command: >
+        helm install prometheus prometheus-community/kube-prometheus-stack
+        --namespace monitoring
+        --version {{ kube_prometheus_stack_version }}
+        -f {{ playbook_dir }}/../../kubernetes/monitoring/prometheus/values.yaml
+        --wait --timeout=10m
+
+    - name: Show Grafana access URL
+      command: >
+        kubectl get nodes -o
+        jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}'
+      register: node_ip
+      changed_when: false
+
+    - name: Print Grafana URL
+      debug:
+        msg: "Grafana: http://{{ node_ip.stdout | trim }}:{{ grafana_nodeport }}  (admin / {{ grafana_admin_password }})"
+
+    # ------------------------------------------------------------------ #
+    # DCGM Exporter                                                        #
+    # ------------------------------------------------------------------ #
+
+    - name: Check if DCGM Exporter is already installed
+      command: helm status dcgm-exporter -n monitoring
+      register: dcgm_status
+      failed_when: false
+      changed_when: false
+
+    - name: Install DCGM Exporter
+      when: dcgm_status.rc != 0
+      command: >
+        helm install dcgm-exporter nvidia/dcgm-exporter
+        --namespace monitoring
+        --version {{ dcgm_exporter_version }}
+        -f {{ playbook_dir }}/../../kubernetes/dcgm-exporter/values.yaml
+        --wait
+
+    # ------------------------------------------------------------------ #
+    # Summary                                                              #
+    # ------------------------------------------------------------------ #
+
+    - name: Show all pod status
+      command: kubectl get pods -A -o wide
+      register: pods_out
+      changed_when: false
+
+    - name: Print pod status
+      debug:
+        msg: "{{ pods_out.stdout_lines }}"

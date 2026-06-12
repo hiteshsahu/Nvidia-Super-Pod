@@ -1,0 +1,145 @@
+---
+# Playbook 04 — Day-2: Upgrade NVIDIA driver
+#
+# Safe upgrade sequence:
+#   1. Check current driver version — skip if already at target
+#   2. Cordon + drain the Kubernetes node
+#   3. Uninstall the old driver package
+#   4. Install the new driver package
+#   5. Reboot (only if the package actually changed)
+#   6. Verify the new driver version
+#   7. Uncordon the node
+#
+# Usage:
+#   # Upgrade to driver 550:
+#   ansible-playbook playbooks/04-upgrade-driver.yml \
+#     --extra-vars "new_driver_version=550"
+#
+# The default target version comes from group_vars/gpu_nodes.yml (driver_version).
+# Override with --extra-vars to target a different version without editing group_vars.
+
+- name: Upgrade NVIDIA driver
+  hosts: gpu_nodes
+  become: true
+
+  vars_files:
+    - ../group_vars/gpu_nodes.yml
+
+  vars:
+    # Override with: --extra-vars "new_driver_version=550"
+    new_driver_version: "{{ driver_version }}"
+
+  tasks:
+
+    # ------------------------------------------------------------------ #
+    # Pre-flight checks                                                    #
+    # ------------------------------------------------------------------ #
+
+    - name: Get current driver version
+      command: nvidia-smi --query-gpu=driver_version --format=csv,noheader
+      register: current_driver
+      changed_when: false
+      failed_when: false
+
+    - name: Parse current driver major version
+      set_fact:
+        current_major: "{{ current_driver.stdout | trim | regex_search('^\\d+') | default('unknown') }}"
+
+    - name: Show version comparison
+      debug:
+        msg: "Current: {{ current_major }}  →  Target: {{ new_driver_version }}"
+
+    - name: Skip host if already at target version
+      meta: end_host
+      when: current_major == new_driver_version | string
+
+    # ------------------------------------------------------------------ #
+    # Cordon + drain                                                       #
+    # ------------------------------------------------------------------ #
+
+    - name: Cordon node (prevent new pod scheduling)
+      become_user: ubuntu
+      command: kubectl cordon {{ ansible_hostname }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
+
+    - name: Drain node workloads (ignore DaemonSets, delete emptyDir)
+      become_user: ubuntu
+      command: >
+        kubectl drain {{ ansible_hostname }}
+        --ignore-daemonsets
+        --delete-emptydir-data
+        --force
+        --timeout=5m
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
+
+    # ------------------------------------------------------------------ #
+    # Driver swap                                                          #
+    # ------------------------------------------------------------------ #
+
+    - name: Remove old driver package
+      apt:
+        name: "nvidia-driver-{{ current_major }}"
+        state: absent
+        purge: true
+      when: current_major != 'unknown'
+
+    - name: Install new driver package
+      apt:
+        name: "nvidia-driver-{{ new_driver_version }}"
+        state: present
+        update_cache: true
+      register: driver_install
+
+    # ------------------------------------------------------------------ #
+    # Reboot (only when the package actually changed)                     #
+    # ------------------------------------------------------------------ #
+
+    - name: Reboot to load new kernel module
+      reboot:
+        reboot_timeout: 300
+        post_reboot_delay: 30
+        test_command: nvidia-smi
+      when: driver_install.changed
+
+    # ------------------------------------------------------------------ #
+    # Post-reboot verification                                             #
+    # ------------------------------------------------------------------ #
+
+    - name: Verify new driver is active
+      command: nvidia-smi --query-gpu=driver_version,name --format=csv,noheader
+      register: post_upgrade
+      changed_when: false
+
+    - name: Assert driver version updated
+      assert:
+        that: new_driver_version in post_upgrade.stdout
+        fail_msg: "Expected driver {{ new_driver_version }} but got: {{ post_upgrade.stdout | trim }}"
+        success_msg: "Driver upgraded successfully: {{ post_upgrade.stdout | trim }}"
+
+    # ------------------------------------------------------------------ #
+    # Uncordon                                                             #
+    # ------------------------------------------------------------------ #
+
+    - name: Uncordon node (allow pod scheduling again)
+      become_user: ubuntu
+      command: kubectl uncordon {{ ansible_hostname }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
+
+    - name: Wait for node to return to Ready
+      become_user: ubuntu
+      command: >
+        kubectl wait --for=condition=Ready
+        node/{{ ansible_hostname }} --timeout=3m
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: false
+
+    - name: Print upgrade summary
+      debug:
+        msg: "{{ ansible_hostname }}: driver {{ current_major }} → {{ new_driver_version }} — node Ready."

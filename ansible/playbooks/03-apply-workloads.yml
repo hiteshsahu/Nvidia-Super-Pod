@@ -1,0 +1,142 @@
+---
+# Playbook 03 — Apply GPU workloads and run validation
+#
+# Steps:
+#   1. Run the CUDA validation job and assert it passes
+#   2. Deploy Triton Inference Server
+#   3. Deploy the PyTorch benchmark job (optional, tagged)
+#
+# Usage:
+#   ansible-playbook playbooks/03-apply-workloads.yml
+#
+# To also run the PyTorch benchmark:
+#   ansible-playbook playbooks/03-apply-workloads.yml --tags pytorch
+
+- name: Apply GPU workloads
+  hosts: gpu_nodes
+  become: false
+
+  vars_files:
+    - ../group_vars/gpu_nodes.yml
+
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+  tasks:
+
+    # ------------------------------------------------------------------ #
+    # CUDA validation job                                                  #
+    # ------------------------------------------------------------------ #
+
+    - name: Apply CUDA validation job
+      command: >
+        kubectl apply -f
+        {{ playbook_dir }}/../../kubernetes/workloads/cuda-test.yaml
+      register: cuda_apply
+      changed_when: "'created' in cuda_apply.stdout"
+
+    - name: Wait for CUDA validation to complete (5 min max)
+      command: >
+        kubectl wait job/cuda-validation -n training
+        --for=condition=complete --timeout=5m
+      register: cuda_wait
+      changed_when: false
+
+    - name: Fetch CUDA validation logs
+      command: kubectl logs -n training job/cuda-validation
+      register: cuda_logs
+      changed_when: false
+
+    - name: Assert CUDA validation passed
+      assert:
+        that: "'All GPU validation checks PASSED' in cuda_logs.stdout"
+        fail_msg: |
+          CUDA validation FAILED. Logs:
+          {{ cuda_logs.stdout }}
+        success_msg: "CUDA validation PASSED."
+
+    - name: Print CUDA validation output
+      debug:
+        msg: "{{ cuda_logs.stdout_lines }}"
+
+    - name: Clean up CUDA validation job
+      command: kubectl delete job cuda-validation -n training
+      register: cleanup
+      changed_when: cleanup.rc == 0
+      failed_when: cleanup.rc != 0 and 'not found' not in cleanup.stderr
+
+    # ------------------------------------------------------------------ #
+    # Triton Inference Server                                              #
+    # ------------------------------------------------------------------ #
+
+    - name: Apply Triton Inference Server
+      command: >
+        kubectl apply -f
+        {{ playbook_dir }}/../../kubernetes/workloads/triton.yaml
+      register: triton_apply
+      changed_when: >
+        'created' in triton_apply.stdout or
+        'configured' in triton_apply.stdout
+
+    - name: Wait for Triton deployment to roll out (5 min max)
+      command: >
+        kubectl rollout status deployment/triton -n inference --timeout=5m
+      changed_when: false
+
+    - name: Get Triton service NodePort
+      command: >
+        kubectl get svc triton -n inference
+        -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}'
+      register: triton_port
+      changed_when: false
+
+    - name: Get node external IP
+      command: >
+        kubectl get nodes
+        -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}'
+      register: node_ip
+      changed_when: false
+
+    - name: Print Triton access info
+      debug:
+        msg:
+          - "Triton HTTP  : http://{{ node_ip.stdout | trim }}:{{ triton_port.stdout | trim }}/v2/health/ready"
+          - "Triton gRPC  : {{ node_ip.stdout | trim }}:30801"
+          - "Triton metrics: http://{{ node_ip.stdout | trim }}:30802/metrics"
+
+    # ------------------------------------------------------------------ #
+    # PyTorch benchmark (optional — run with --tags pytorch)              #
+    # ------------------------------------------------------------------ #
+
+    - name: Apply PyTorch benchmark job
+      tags: pytorch
+      command: >
+        kubectl apply -f
+        {{ playbook_dir }}/../../kubernetes/workloads/pytorch-job.yaml
+      register: pytorch_apply
+      changed_when: "'created' in pytorch_apply.stdout"
+
+    - name: Wait for PyTorch benchmark to complete (30 min max)
+      tags: pytorch
+      command: >
+        kubectl wait job/pytorch-benchmark -n training
+        --for=condition=complete --timeout=30m
+      changed_when: false
+
+    - name: Fetch PyTorch benchmark results
+      tags: pytorch
+      command: kubectl logs -n training job/pytorch-benchmark
+      register: pytorch_logs
+      changed_when: false
+
+    - name: Print PyTorch benchmark results
+      tags: pytorch
+      debug:
+        msg: "{{ pytorch_logs.stdout_lines }}"
+
+    - name: Clean up PyTorch benchmark job
+      tags: pytorch
+      command: kubectl delete job pytorch-benchmark -n training
+      register: pytorch_cleanup
+      changed_when: pytorch_cleanup.rc == 0
+      failed_when: pytorch_cleanup.rc != 0 and 'not found' not in pytorch_cleanup.stderr

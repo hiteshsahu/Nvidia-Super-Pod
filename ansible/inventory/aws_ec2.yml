@@ -1,0 +1,36 @@
+---
+# AWS EC2 dynamic inventory
+# Requires: pip install boto3 botocore  +  collection amazon.aws
+# Usage: ansible-inventory -i inventory/aws_ec2.yml --list
+#
+# Picks up all running instances tagged Project=nvidia-superpod.
+# The GPU nodes end up in the "gpu_nodes" group.
+
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - eu-central-1
+
+filters:
+  tag:Project: nvidia-superpod
+  instance-state-name: running
+
+# Use the Elastic IP as the SSH target.
+hostnames:
+  - ip-address
+  - dns-name
+
+compose:
+  ansible_host: public_ip_address
+
+# Automatically group by tag value.
+keyed_groups:
+  - key: tags.get('Environment', 'unknown')
+    prefix: env
+  - key: tags.get('Name', 'unnamed')
+    prefix: ''
+    separator: ''
+
+# All instances in this project go into gpu_nodes.
+groups:
+  gpu_nodes: "'nvidia-superpod' in tags.get('Project', '')"

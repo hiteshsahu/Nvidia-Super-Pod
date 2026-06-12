@@ -1,88 +1,136 @@
 # Runbook 02 — CUDA Toolkit Setup & Configuration
 
+## Overview
+
+On AWS, CUDA is installed automatically by cloud-init (`cuda-toolkit-12-3` via the `cuda-keyring` apt method). This runbook covers manual installation and post-install validation steps.
+
 ## Prerequisites
-- NVIDIA driver installed and validated (see Runbook 01)
+
+- NVIDIA driver 535 installed and validated (see [Runbook 01](01-driver-install.md))
 - Ubuntu 22.04 LTS
-- Drivers >= 525 for CUDA 12.x compatibility
+- Driver >= 525 required for CUDA 12.x
+
+---
 
 ## Steps
 
-### 1. Add NVIDIA CUDA repository
+### 1. Add the NVIDIA CUDA apt repository
+
 ```bash
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+# Install the keyring package — this registers the CUDA apt repo and GPG key in one step.
+wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt-get update -y
 ```
 
-### 2. Install CUDA Toolkit
-```bash
-sudo apt-get update
-sudo apt-get install -y cuda-toolkit-12-4
+> Use `cuda-keyring_1.1-1_all.deb` (not `1.0`). The `1.0` package uses a deprecated apt-key path and conflicts with `1.1` if both are installed.
 
-# Or for a specific version:
-# sudo apt-get install -y cuda-12-4
+### 2. Install CUDA Toolkit 12-3
+
+```bash
+sudo apt-get install -y cuda-toolkit-12-3
+
+# Verify the installed version
+nvcc --version
+# Expected: Cuda compilation tools, release 12.3
 ```
 
 ### 3. Set environment variables
-Add to `~/.bashrc` or `/etc/environment`:
+
+Add to `/etc/environment` for system-wide availability (cloud-init does this automatically):
+
+```bash
+echo 'export PATH=/usr/local/cuda/bin:$PATH' | sudo tee -a /etc/environment
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' | sudo tee -a /etc/environment
+source /etc/environment
+```
+
+Or for the current user only, add to `~/.bashrc`:
+
 ```bash
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 ```
 
-Apply changes:
+### 4. Install cuDNN (optional, recommended for deep learning)
+
+cuDNN is available from the same CUDA apt repo — no manual tarball download required:
+
 ```bash
-source ~/.bashrc
+sudo apt-get install -y libcudnn8 libcudnn8-dev
+
+# Verify
+python3 -c "import ctypes; ctypes.CDLL('libcudnn.so.8'); print('cuDNN OK')"
 ```
 
-### 4. Verify CUDA installation
-```bash
-nvcc --version
-# Expected: CUDA Toolkit 12.4
+### 5. Build and run CUDA validation samples
 
-cuda-memtest --stress
-# Runs memory tests on all GPUs
+Cloud-init clones and pre-builds the samples at `/opt/cuda-samples`. To rebuild manually:
+
+```bash
+git clone --depth 1 https://github.com/NVIDIA/cuda-samples.git /opt/cuda-samples
+
+# deviceQuery — reports all GPU properties
+cd /opt/cuda-samples/Samples/1_Utilities/deviceQuery && make
+./deviceQuery
+# Expected last line: Result = PASS
+
+# bandwidthTest — measures host↔device and device↔device memory bandwidth
+cd /opt/cuda-samples/Samples/1_Utilities/bandwidthTest && make
+./bandwidthTest --memory=pinned
+# Expected: Host to Device ~12 GB/s, Device to Host ~13 GB/s (T4 PCIe Gen3 x16)
 ```
 
-### 5. Install cuDNN (optional but recommended)
+### 6. Validate with the Kubernetes job (once cluster is running)
+
 ```bash
-# Download from https://developer.nvidia.com/cudnn
-# Extract and copy files
-tar -xzf cudnn-linux-x86_64-*.tar.xz
-sudo cp cudnn-linux-x86_64-*/include/cudnn.h /usr/local/cuda/include/
-sudo cp cudnn-linux-x86_64-*/lib/libcudnn* /usr/local/cuda/lib64/
-sudo chmod a+r /usr/local/cuda/lib64/libcudnn*
+kubectl apply -f kubernetes/workloads/cuda-test.yaml
+kubectl logs -n training job/cuda-validation -f
+# Expected last line: All GPU validation checks PASSED.
 ```
 
-### 6. Validate CUDA samples
-```bash
-cp -r /usr/local/cuda/samples ~/cuda-samples
-cd ~/cuda-samples
-make -j$(nproc)
-./bin/x86_64/linux/release/deviceQuery
-```
+---
 
 ## Troubleshooting
 
-**nvcc: command not found**
-- Check PATH: `echo $PATH | grep cuda`
-- Source bashrc: `source ~/.bashrc`
-- Verify installation: `ls /usr/local/cuda/bin/`
+**`nvcc: command not found`**
+```bash
+# Verify CUDA is on PATH
+echo $PATH | tr ':' '\n' | grep cuda
+# If missing, source the environment file
+source /etc/environment
+# Verify binary exists
+ls /usr/local/cuda/bin/nvcc
+```
 
-**CUDA version mismatch**
-- Check CUDA version: `nvcc --version`
-- Check driver support: `nvidia-smi`
-- Driver must support CUDA version (see compatibility matrix)
+**`libcuda.so.1: cannot open shared object file`**
+```bash
+# Run ldconfig to rebuild the dynamic linker cache
+sudo ldconfig
+# Or set manually
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib:$LD_LIBRARY_PATH
+```
 
-**libcuda.so.1 not found**
-- Set LD_LIBRARY_PATH: `export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH`
-- Run ldconfig: `sudo ldconfig`
+**`cuda-keyring` dpkg conflict**
+```bash
+# Remove both versions and reinstall the correct one
+sudo apt-get remove --purge cuda-keyring
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt-get update -y
+```
 
-**Compilation failures with nvcc**
-- Ensure gcc/g++ are installed: `sudo apt-get install -y build-essential`
-- Check CUDA architecture compatibility for your GPU
+**`nvcc` compilation fails with incompatible gcc**
+```bash
+# CUDA 12.3 requires gcc <= 12 on Ubuntu 22.04
+gcc --version
+sudo apt-get install -y gcc-12 g++-12
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 60
+```
+
+---
 
 ## Next Steps
-- Proceed to Runbook 03 for GPU Operator deployment
-- Install cuDNN for deep learning frameworks
-- Set up containerized CUDA environments with Docker
+
+- Proceed to [Runbook 03](03-gpu-operator.md) — GPU Operator on Kubernetes
+- Run the [PyTorch benchmark job](../kubernetes/workloads/pytorch-job.yaml) to validate end-to-end compute

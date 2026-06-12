@@ -1,0 +1,77 @@
+####################################################################
+# NVIDIA DCGM Exporter — Helm Values
+# Chart : nvidia/dcgm-exporter
+# Docs  : https://github.com/NVIDIA/dcgm-exporter
+#
+# Install:
+#   helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+#   helm install dcgm-exporter nvidia/dcgm-exporter \
+#     --namespace monitoring --create-namespace \
+#     --version 3.3.5 \
+#     -f kubernetes/dcgm-exporter/values.yaml
+####################################################################
+
+image:
+  repository: nvcr.io/nvidia/k8s/dcgm-exporter
+  tag: 3.3.5-3.4.0-ubuntu22.04
+  pullPolicy: IfNotPresent
+
+# Pass the metrics CSV config file; the chart ships a default at this path.
+arguments:
+  - -f
+  - /etc/dcgm-exporter/dcp-metrics-included.csv
+  - --address
+  - :9400
+
+# Scrape interval — 15 s balances freshness vs. cardinality.
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  honorLabels: false
+  # Must match the release name used for kube-prometheus-stack.
+  additionalLabels:
+    release: prometheus
+
+service:
+  type: ClusterIP
+  port: 9400
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9400"
+  prometheus.io/path: "/metrics"
+
+# Run on GPU nodes only.
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Key DCGM field IDs collected for the GPU dashboard.
+# Full list: https://docs.nvidia.com/datacenter/dcgm/latest/dcgm-user-guide/dcgm-api.html
+extraEnv:
+  - name: DCGM_EXPORTER_COLLECTORS
+    value: >-
+      DCGM_FI_DEV_GPU_UTIL,
+      DCGM_FI_DEV_MEM_COPY_UTIL,
+      DCGM_FI_DEV_FB_USED,
+      DCGM_FI_DEV_FB_FREE,
+      DCGM_FI_DEV_GPU_TEMP,
+      DCGM_FI_DEV_POWER_USAGE,
+      DCGM_FI_DEV_SM_CLOCK,
+      DCGM_FI_DEV_MEM_CLOCK,
+      DCGM_FI_DEV_PCIE_TX_BYTES,
+      DCGM_FI_DEV_PCIE_RX_BYTES,
+      DCGM_FI_DEV_ECC_SBE_VOL_TOTAL,
+      DCGM_FI_DEV_ECC_DBE_VOL_TOTAL

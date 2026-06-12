@@ -1,6 +1,9 @@
 # 🐸 NVIDIA SuperPod — GPU Infrastructure Lab
+> A hands-on infrastructure project simulating enterprise-grade NVIDIA GPU cluster provisioning, orchestration, and observability 
 
-> A hands-on infrastructure project simulating enterprise-grade NVIDIA GPU cluster provisioning, orchestration, and observability — built to demonstrate real-world AI infrastructure skills across the full stack: bare metal → Kubernetes → monitoring.
+Built on AWS using Terraform, Ansible, Cloud-Init, and Kubernetes.
+- Automated deployment of NVIDIA GPU Operator, device plugins, CUDA runtime, and observability stack (DCGM Exporter, Prometheus, Grafana).
+- GPU monitoring, alerting, and AI workload execution for PyTorch and LLM inference workloads.
 
 ---
 
@@ -17,47 +20,54 @@ This project provisions and operates a GPU-accelerated infrastructure stack mode
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    NVIDIA SuperPod Lab                   │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│   ┌──────────────┐     ┌──────────────────────────┐    │
-│   │  Provisioning │     │     Kubernetes Layer      │    │
-│   │              │     │                          │    │
-│   │  - Terraform  │────▶│  - NVIDIA GPU Operator   │    │
-│   │  - Ansible    │     │  - Device Plugin         │    │
-│   │  - Cloud Init │     │  - Node Feature Discovery│    │
-│   └──────────────┘     └──────────┬───────────────┘    │
-│                                   │                     │
-│   ┌──────────────┐     ┌──────────▼───────────────┐    │
-│   │  GPU Layer   │     │    Observability Stack    │    │
-│   │              │     │                          │    │
-│   │  - Drivers   │     │  - DCGM Exporter         │    │
-│   │  - CUDA 12.x │     │  - Prometheus            │    │
-│   │  - cuDNN     │     │  - Grafana Dashboards    │    │
-│   │  - nvidia-smi│     │  - Alerting Rules        │    │
-│   └──────────────┘     └──────────────────────────┘    │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+
+flowchart TB
+
+    LAB["NVIDIA SuperPod Lab"]
+
+    PROV["Provisioning<br/>• Terraform<br/>• Ansible<br/>• Cloud-Init"]
+
+    K8S["Kubernetes Layer<br/>• NVIDIA GPU Operator<br/>• Device Plugin<br/>• Node Feature Discovery"]
+
+    GPU["GPU Layer<br/>• NVIDIA Drivers<br/>• CUDA 12.x<br/>• cuDNN<br/>• nvidia-smi"]
+
+    OBS["Observability Stack<br/>• DCGM Exporter<br/>• Prometheus<br/>• Grafana Dashboards<br/>• Alerting Rules"]
+
+    LAB --> PROV
+    PROV --> K8S
+    K8S --> GPU
+    K8S --> OBS
+
+    classDef lab fill:#76B900,color:#ffffff,stroke:#4C7A00,stroke-width:3px;
+    classDef prov fill:#E3F2FD,color:#000000,stroke:#1565C0,stroke-width:2px;
+    classDef k8s fill:#326CE5,color:#ffffff,stroke:#1A3F99,stroke-width:2px;
+    classDef gpu fill:#FFF3CD,color:#000000,stroke:#FFB300,stroke-width:2px;
+    classDef obs fill:#E8F5E9,color:#000000,stroke:#2E7D32,stroke-width:2px;
+
+    class LAB lab;
+    class PROV prov;
+    class K8S k8s;
+    class GPU gpu;
+    class OBS obs;
 ```
 
 ---
 
 ## 🛠️ Stack
 
-| Layer | Technology |
-|---|---|
-| Cloud | AWS EC2 (`g4dn`, `p3`) |
-| IaC | Terraform |
-| Configuration Management | Ansible |
-| Container Orchestration | Kubernetes (EKS / kind) |
-| GPU Operator | NVIDIA GPU Operator |
-| GPU Monitoring | DCGM Exporter |
-| Metrics | Prometheus |
-| Dashboards & Alerts | Grafana |
-| Workloads | PyTorch, CUDA Samples, Triton Inference Server |
-| Profiling | Nsight Systems, `nvidia-smi` |
+| Layer                    | Technology                                           |
+|--------------------------|------------------------------------------------------|
+| Cloud                    | AWS EC2 (`g4dn`, `p3`)                               |
+| IaC                      | `Terraform`                                          |
+| Configuration Management | `Ansible`                                            |
+| Container Orchestration  | `Kubernetes` (kubeadm single-node / kind local)      |
+| GPU Operator             | `NVIDIA GPU Operator`                                |
+| GPU Monitoring           | `DCGM Exporter`                                      |
+| Metrics                  | `Prometheus`                                         |
+| Dashboards & Alerts      | `Grafana`                                            |
+| Workloads                | `PyTorch`, `CUDA Samples`, `Triton Inference Server` |
+| Profiling                | `Nsight Systems`, `nvidia-smi`                       |
 
 ---
 
@@ -72,6 +82,19 @@ nvidia-superpod/
 │   └── modules/
 │       ├── vpc/                   # VPC, subnets, IGW, NAT GW, flow logs
 │       └── gpu-node/              # EC2, EBS, IAM, SG, EIP, CW alarms
+├── ansible/
+│   ├── ansible.cfg                # SSH settings, inventory path
+│   ├── inventory/
+│   │   ├── aws_ec2.yml            # Dynamic inventory from EC2 tags
+│   │   └── hosts.yml              # Static fallback
+│   ├── group_vars/
+│   │   └── gpu_nodes.yml          # Version pins mirroring terraform/variables.tf
+│   └── playbooks/
+│       ├── 01-bootstrap-k8s.yml   # kubeadm init, Flannel CNI, node label
+│       ├── 02-deploy-stack.yml    # Helm installs in order
+│       ├── 03-apply-workloads.yml # CUDA validation, Triton, PyTorch benchmark
+│       ├── 04-upgrade-driver.yml  # Day-2: safe driver version swap
+│       └── 05-validate.yml        # End-to-end 7-check health report
 ├── kubernetes/
 │   ├── base/
 │   │   └── namespaces.yaml        # gpu-operator, monitoring, inference, training
@@ -97,7 +120,8 @@ nvidia-superpod/
 └── docs/
     ├── architecture.md            # Full layer diagram & design decisions
     ├── benchmarks.md              # T4 bandwidth, compute, DCGM baselines
-    └── lessons-learned.md         # Operational lessons from building this stack
+    ├── lessons-learned.md         # Operational lessons from building this stack
+    └── HardwareRequirement.md     # Hardware specs, instance upgrade path, local dev options
 ```
 
 ---
@@ -120,29 +144,24 @@ aws-cli >= 2.x
 ```bash
 cd terraform/
 terraform init
-terraform plan -var="instance_type=g4dn.xlarge"
+terraform plan -var="ssh_public_key=$(cat ~/.ssh/id_rsa.pub)"
 terraform apply
+# Outputs the node IP, SSH command, and service URLs when complete.
 ```
 
-### 2. Validate GPU Setup (drivers + CUDA installed automatically by cloud-init)
+Cloud-init runs automatically on first boot and installs: NVIDIA driver 535, CUDA 12-3, Docker, NVIDIA Container Toolkit, kubectl, Helm, and DCGM. No manual driver steps required.
+
+### 2. Bootstrap Kubernetes (Ansible)
 
 ```bash
-./scripts/validate-gpu.sh
+cd ansible/
+# Update inventory/hosts.yml with the IP from: terraform output gpu_node_public_ip
 
-# Expected output:
-# ✅ nvidia-smi: NVIDIA T4 detected
-# ✅ CUDA 12.x toolkit installed
-# ✅ deviceQuery: PASSED
-# ✅ bandwidthTest: Host-to-Device 12.5 GB/s
+ansible-playbook playbooks/01-bootstrap-k8s.yml
+# Installs kubeadm + kubelet, runs kubeadm init, deploys Flannel CNI, labels GPU node.
 ```
 
-### 3. Bootstrap Kubernetes namespaces
-
-```bash
-kubectl apply -f kubernetes/base/namespaces.yaml
-```
-
-### 4. Deploy GPU Operator
+### 3. Deploy GPU Operator
 
 ```bash
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
@@ -161,12 +180,13 @@ helm install gpu-operator nvidia/gpu-operator \
 ### 5. Verify GPU Resources in Kubernetes
 
 ```bash
-kubectl get nodes -o json | jq '.items[].status.allocatable | select(."nvidia.com/gpu")'
-# Expected: { "nvidia.com/gpu": "1" }
+kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
+# Expected: 1
 
 # CUDA validation job
 kubectl apply -f kubernetes/workloads/cuda-test.yaml
-kubectl logs -n training job/cuda-validation -f
+kubectl wait job/cuda-validation -n training --for=condition=complete --timeout=5m
+kubectl logs -n training job/cuda-validation
 # Expected last line: All GPU validation checks PASSED.
 ```
 
@@ -196,31 +216,32 @@ helm install dcgm-exporter nvidia/dcgm-exporter \
 
 ## 📊 Key Metrics Monitored
 
-| Metric | Description |
-|---|---|
-| `DCGM_FI_DEV_GPU_UTIL` | GPU compute utilization % |
-| `DCGM_FI_DEV_MEM_COPY_UTIL` | Memory bandwidth utilization |
-| `DCGM_FI_DEV_FB_USED` | GPU framebuffer memory used |
-| `DCGM_FI_DEV_POWER_USAGE` | Power draw per GPU |
-| `DCGM_FI_DEV_SM_CLOCK` | SM clock frequency |
-| `DCGM_FI_DEV_GPU_TEMP` | GPU temperature |
-| `DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL` | NVLink bandwidth (multi-GPU) |
+| Metric                               | Description                  |
+|--------------------------------------|------------------------------|
+| `DCGM_FI_DEV_GPU_UTIL`               | GPU compute utilization %    |
+| `DCGM_FI_DEV_MEM_COPY_UTIL`          | Memory bandwidth utilization |
+| `DCGM_FI_DEV_FB_USED`                | GPU framebuffer memory used  |
+| `DCGM_FI_DEV_POWER_USAGE`            | Power draw per GPU           |
+| `DCGM_FI_DEV_SM_CLOCK`               | SM clock frequency           |
+| `DCGM_FI_DEV_GPU_TEMP`               | GPU temperature              |
+| `DCGM_FI_DEV_ECC_SBE_VOL_TOTAL` | Single-bit ECC errors (early hardware warning) |
 
 ---
 
 ## 🔬 Workload Profiling
 
 ```bash
-# Profile a PyTorch training job with Nsight Systems
-./scripts/profile-workload.sh pytorch-job
-
-# Quick utilization snapshot
+# Quick utilization snapshot (1-second polling)
 nvidia-smi dmon -s u -d 1
 
 # Continuous GPU stats
-watch -n 1 nvidia-smi --query-gpu=utilization.gpu,utilization.memory,\
-memory.used,memory.free,temperature.gpu,power.draw \
---format=csv,noheader,nounits
+watch -n 1 nvidia-smi \
+  --query-gpu=utilization.gpu,utilization.memory,memory.used,memory.free,temperature.gpu,power.draw \
+  --format=csv,noheader,nounits
+
+# Run the PyTorch ResNet-50 benchmark and tail results
+kubectl apply -f kubernetes/workloads/pytorch-job.yaml
+kubectl logs -n training job/pytorch-benchmark -f
 ```
 
 ---
@@ -233,28 +254,30 @@ Step-by-step operational guides live in `/runbooks/`:
 - [CUDA Toolkit Setup](runbooks/02-cuda-setup.md)
 - [GPU Operator Deployment](runbooks/03-gpu-operator.md)
 - [Observability Stack Setup](runbooks/04-observability.md)
-- [Troubleshooting Guide](runbooks/05-troubleshooting.md)
 
 ---
 
 ## 📈 Benchmark Results
 
 | Test | Hardware | Result |
-|---|---|---|
-| Host-to-Device bandwidth | T4 (g4dn.xlarge) | ~12.5 GB/s |
-| Device-to-Host bandwidth | T4 (g4dn.xlarge) | ~13.0 GB/s |
+|------|----------|--------|
+| Host-to-Device bandwidth | T4 (g4dn.xlarge) | ~12.0 GB/s |
+| Device-to-Host bandwidth | T4 (g4dn.xlarge) | ~12.8 GB/s |
+| Device-to-Device bandwidth | T4 | ~255 GB/s |
 | CUDA deviceQuery | T4 | PASSED |
-| PyTorch MNIST (1 epoch) | T4 | ~45s |
+| ResNet-50 training throughput | T4 (batch=64, fp32) | ~320 samples/sec |
+| ResNet-50 step latency | T4 (batch=64, fp32) | ~200 ms/step |
 
 ---
 
 ## 🎯 Key Learnings
 
-- NVIDIA driver version must be compatible with the CUDA toolkit version — always verify the [CUDA compatibility matrix](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/) before provisioning
-- The GPU Operator manages the full driver/toolkit/plugin lifecycle — prefer it over manual installation in Kubernetes environments
-- DCGM Exporter requires `privileged: true` on the DaemonSet pod spec for hardware access
-- Node Feature Discovery (NFD) labels nodes automatically — use `nvidia.com/gpu: "true"` selectors in workload specs
-- GPU memory fragmentation is a common bottleneck in multi-tenant clusters — monitor `FB_USED` per workload carefully
+- Driver 535 is the minimum for CUDA 12.x — always check the [CUDA compatibility matrix](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/) before upgrading either
+- When drivers are pre-installed by cloud-init, set `driver.enabled: false` in the GPU Operator — letting the operator re-install causes a version-check conflict that stalls the operator indefinitely
+- On single-node clusters, label the node `nvidia.com/gpu.present=true` manually before installing the GPU Operator — NFD cannot self-label until the operator is running (deadlock)
+- Set `serviceMonitorSelectorNilUsesHelmValues: false` in kube-prometheus-stack or Prometheus silently ignores ServiceMonitors outside its own namespace, including DCGM Exporter
+- The T4 TDP is 70 W — alert thresholds above that will never fire; check GPU specs before copying alert rules from a different instance family
+- GPU utilisation below 10% during a training job almost always means the DataLoader is the bottleneck, not the GPU
 
 ---
 

@@ -66,47 +66,38 @@ This project provisions and operates a GPU-accelerated infrastructure stack mode
 ```
 nvidia-superpod/
 ├── terraform/
-│   ├── main.tf               # EC2 GPU instance provisioning
-│   ├── variables.tf
-│   ├── outputs.tf
+│   ├── main.tf                    # Root: VPC + GPU node wiring
+│   ├── variables.tf               # All input variables with descriptions
+│   ├── outputs.tf                 # Useful outputs (IPs, URLs, commands)
 │   └── modules/
-│       ├── vpc/              # Network setup
-│       └── gpu-node/         # GPU instance module
-├── ansible/
-│   ├── playbooks/
-│   │   ├── install-drivers.yml      # NVIDIA driver installation
-│   │   ├── install-cuda.yml         # CUDA toolkit + cuDNN
-│   │   └── configure-node.yml       # OS-level GPU configuration
-│   └── inventory/
-│       └── hosts.yml
+│       ├── vpc/                   # VPC, subnets, IGW, NAT GW, flow logs
+│       └── gpu-node/              # EC2, EBS, IAM, SG, EIP, CW alarms
 ├── kubernetes/
+│   ├── base/
+│   │   └── namespaces.yaml        # gpu-operator, monitoring, inference, training
 │   ├── gpu-operator/
-│   │   └── values.yaml       # NVIDIA GPU Operator Helm values
+│   │   └── values.yaml            # GPU Operator Helm values (driver.enabled=false)
 │   ├── dcgm-exporter/
-│   │   └── values.yaml       # GPU metrics exporter config
+│   │   └── values.yaml            # DCGM Exporter Helm values + ServiceMonitor
 │   ├── workloads/
-│   │   ├── cuda-test.yaml    # CUDA sample workload
-│   │   ├── pytorch-job.yaml  # PyTorch training job
-│   │   └── triton.yaml       # Triton Inference Server
+│   │   ├── cuda-test.yaml         # Job: nvidia-smi, deviceQuery, bandwidthTest
+│   │   ├── pytorch-job.yaml       # Job: ResNet-50 throughput benchmark
+│   │   └── triton.yaml            # Deployment + Service + ServiceMonitor
 │   └── monitoring/
 │       ├── prometheus/
+│       │   └── values.yaml        # kube-prometheus-stack Helm values
 │       └── grafana/
 │           └── dashboards/
-│               └── gpu-cluster.json
-├── scripts/
-│   ├── validate-gpu.sh       # Post-install GPU validation
-│   ├── benchmark.sh          # GPU bandwidth & compute benchmarks
-│   └── profile-workload.sh   # Nsight Systems profiling helper
+│               └── gpu-cluster.json  # 11-panel GPU metrics dashboard
 ├── runbooks/
-│   ├── 01-driver-install.md
-│   ├── 02-cuda-setup.md
-│   ├── 03-gpu-operator.md
-│   ├── 04-observability.md
-│   └── 05-troubleshooting.md
+│   ├── 01-driver-install.md       # Manual driver install & validation
+│   ├── 02-cuda-setup.md           # CUDA 12-3 setup & cuDNN
+│   ├── 03-gpu-operator.md         # GPU Operator deploy & verify
+│   └── 04-observability.md        # DCGM + Prometheus + Grafana
 └── docs/
-    ├── architecture.md
-    ├── benchmarks.md
-    └── lessons-learned.md
+    ├── architecture.md            # Full layer diagram & design decisions
+    ├── benchmarks.md              # T4 bandwidth, compute, DCGM baselines
+    └── lessons-learned.md         # Operational lessons from building this stack
 ```
 
 ---
@@ -133,15 +124,7 @@ terraform plan -var="instance_type=g4dn.xlarge"
 terraform apply
 ```
 
-### 2. Install NVIDIA Drivers & CUDA
-
-```bash
-cd ansible/
-ansible-playbook playbooks/install-drivers.yml -i inventory/hosts.yml
-ansible-playbook playbooks/install-cuda.yml -i inventory/hosts.yml
-```
-
-### 3. Validate GPU Setup
+### 2. Validate GPU Setup (drivers + CUDA installed automatically by cloud-init)
 
 ```bash
 ./scripts/validate-gpu.sh
@@ -153,37 +136,60 @@ ansible-playbook playbooks/install-cuda.yml -i inventory/hosts.yml
 # ✅ bandwidthTest: Host-to-Device 12.5 GB/s
 ```
 
-### 4. Deploy GPU Operator on Kubernetes
+### 3. Bootstrap Kubernetes namespaces
 
 ```bash
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-helm repo update
+kubectl apply -f kubernetes/base/namespaces.yaml
+```
+
+### 4. Deploy GPU Operator
+
+```bash
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+
+# Label the node first (required on single-node clusters)
+kubectl label node $(kubectl get nodes -o jsonpath='{.items[0].metadata.name}') \
+  nvidia.com/gpu.present=true
 
 helm install gpu-operator nvidia/gpu-operator \
   --namespace gpu-operator \
-  --create-namespace \
-  -f kubernetes/gpu-operator/values.yaml
+  --version v24.3.0 \
+  -f kubernetes/gpu-operator/values.yaml \
+  --wait --timeout=10m
 ```
 
 ### 5. Verify GPU Resources in Kubernetes
 
 ```bash
 kubectl get nodes -o json | jq '.items[].status.allocatable | select(."nvidia.com/gpu")'
+# Expected: { "nvidia.com/gpu": "1" }
 
-# Schedule a test workload
+# CUDA validation job
 kubectl apply -f kubernetes/workloads/cuda-test.yaml
-kubectl logs -f job/cuda-vector-add
+kubectl logs -n training job/cuda-validation -f
+# Expected last line: All GPU validation checks PASSED.
 ```
 
 ### 6. Deploy Observability Stack
 
 ```bash
-# DCGM Exporter + Prometheus + Grafana
-helm install dcgm-exporter nvidia/dcgm-exporter \
-  -f kubernetes/dcgm-exporter/values.yaml
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
 
-kubectl apply -f kubernetes/monitoring/prometheus/
-kubectl apply -f kubernetes/monitoring/grafana/
+# kube-prometheus-stack (Prometheus + Grafana + node-exporter)
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  -f kubernetes/monitoring/prometheus/values.yaml \
+  --wait --timeout=10m
+
+# DCGM Exporter (GPU hardware metrics)
+helm install dcgm-exporter nvidia/dcgm-exporter \
+  --namespace monitoring \
+  --version 3.3.5 \
+  -f kubernetes/dcgm-exporter/values.yaml \
+  --wait
+
+# Grafana is available at http://<node-ip>:30300  (admin / superpod-changeme)
 ```
 
 ---

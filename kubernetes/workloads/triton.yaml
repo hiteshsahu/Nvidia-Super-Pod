@@ -1,0 +1,163 @@
+####################################################################
+# NVIDIA Triton Inference Server
+# Serves models from /mnt/data/model-repository on the GPU node.
+#
+# Model repository layout expected on the host:
+#   /mnt/data/model-repository/
+#     <model-name>/
+#       config.pbtxt
+#       1/
+#         model.plan   (TensorRT) or model.onnx or model.pt etc.
+#
+# Usage:
+#   kubectl apply -f kubernetes/workloads/triton.yaml
+#   # Health check:
+#   curl http://<node-ip>:30800/v2/health/ready
+#   # List loaded models:
+#   curl http://<node-ip>:30800/v2/models
+####################################################################
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton
+  namespace: inference
+  labels:
+    app: triton
+    app.kubernetes.io/part-of: superpod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton
+  template:
+    metadata:
+      labels:
+        app: triton
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: triton
+          image: nvcr.io/nvidia/tritonserver:24.01-py3
+          command: ["tritonserver"]
+          args:
+            - --model-repository=/mnt/data/model-repository
+            - --log-verbose=0
+            # Continue serving other models if one fails to load.
+            - --exit-on-error=false
+            # Infer config from model file if config.pbtxt is absent.
+            - --strict-model-config=false
+            - --metrics-port=8002
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: grpc
+              containerPort: 8001
+              protocol: TCP
+            - name: metrics
+              containerPort: 8002
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /v2/health/live
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 3
+
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "2"
+              memory: 8Gi
+
+          volumeMounts:
+            - name: model-repository
+              mountPath: /mnt/data/model-repository
+            # Triton uses /dev/shm for zero-copy IPC between client and server.
+            - name: shm
+              mountPath: /dev/shm
+
+      volumes:
+        - name: model-repository
+          hostPath:
+            path: /mnt/data/model-repository
+            type: DirectoryOrCreate
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton
+  namespace: inference
+  labels:
+    app: triton
+    app.kubernetes.io/part-of: superpod
+spec:
+  type: NodePort
+  selector:
+    app: triton
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      nodePort: 30800
+    - name: grpc
+      port: 8001
+      targetPort: grpc
+      nodePort: 30801
+    - name: metrics
+      port: 8002
+      targetPort: metrics
+      nodePort: 30802
+
+---
+# Scrape Triton's Prometheus metrics via kube-prometheus-stack.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: triton
+  namespace: inference
+  labels:
+    app: triton
+    # Must match the release name used when installing kube-prometheus-stack.
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - inference
+  selector:
+    matchLabels:
+      app: triton
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics

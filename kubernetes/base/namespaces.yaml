@@ -1,0 +1,34 @@
+####################################################################
+# NVIDIA SuperPod — Cluster Namespaces
+# Apply first: kubectl apply -f kubernetes/base/namespaces.yaml
+####################################################################
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gpu-operator
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: superpod
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: superpod
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inference
+  labels:
+    app.kubernetes.io/part-of: superpod
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: training
+  labels:
+    app.kubernetes.io/part-of: superpod

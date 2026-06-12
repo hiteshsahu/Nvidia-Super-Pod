@@ -1,0 +1,86 @@
+####################################################################
+# CUDA Validation Job
+# Confirms GPU access, runs deviceQuery and bandwidthTest.
+#
+# Usage:
+#   kubectl apply -f kubernetes/workloads/cuda-test.yaml
+#   kubectl logs -n training job/cuda-validation -f
+#   kubectl delete job cuda-validation -n training   # cleanup
+####################################################################
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cuda-validation
+  namespace: training
+  labels:
+    app: cuda-validation
+    app.kubernetes.io/part-of: superpod
+spec:
+  # Auto-delete pod 10 min after completion so the node stays clean.
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: cuda-validation
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: cuda-test
+          image: nvidia/cuda:12.3.2-base-ubuntu22.04
+          command:
+            - bash
+            - -c
+            - |
+              set -euo pipefail
+
+              echo "============================================"
+              echo " CUDA Validation — $(date)"
+              echo "============================================"
+
+              echo ""
+              echo "--- nvidia-smi ---"
+              nvidia-smi
+
+              echo ""
+              echo "--- CUDA version ---"
+              nvcc --version 2>/dev/null || echo "nvcc not in PATH (base image; driver confirmed via nvidia-smi)"
+
+              echo ""
+              echo "--- deviceQuery ---"
+              /opt/cuda-samples/Samples/1_Utilities/deviceQuery/deviceQuery
+
+              echo ""
+              echo "--- bandwidthTest (H2D / D2H / D2D) ---"
+              /opt/cuda-samples/Samples/1_Utilities/bandwidthTest/bandwidthTest --memory=pinned
+
+              echo ""
+              echo "All GPU validation checks PASSED."
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: cuda-samples
+              mountPath: /opt/cuda-samples
+              readOnly: true
+
+      volumes:
+        # cuda-samples are compiled by cloud-init and live on the host.
+        - name: cuda-samples
+          hostPath:
+            path: /opt/cuda-samples
+            type: DirectoryOrCreate
+
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+
+      nodeSelector:
+        nvidia.com/gpu.present: "true"

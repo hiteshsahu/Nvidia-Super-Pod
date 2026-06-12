@@ -1,0 +1,75 @@
+####################################################################
+# NVIDIA GPU Operator — Helm Values
+# Chart : nvidia/gpu-operator
+# Docs  : https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/
+#
+# Install:
+#   helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+#   helm install gpu-operator nvidia/gpu-operator \
+#     --namespace gpu-operator --create-namespace \
+#     --version v24.3.0 \
+#     -f kubernetes/gpu-operator/values.yaml
+####################################################################
+
+operator:
+  defaultRuntime: docker
+  # Label nodes that have a GPU so the operator's webhook targets the right pods
+  runtimeClass: nvidia
+
+# Drivers are pre-installed by cloud-init (nvidia-driver-535); skip re-installation.
+driver:
+  enabled: false
+
+# NVIDIA Container Toolkit is pre-installed; let the operator manage the runtime config.
+toolkit:
+  enabled: true
+  env:
+    - name: CONTAINERD_CONFIG
+      value: /etc/containerd/config.toml
+    - name: CONTAINERD_SOCKET
+      value: /run/containerd/containerd.sock
+
+# Exposes nvidia.com/gpu resource to the scheduler.
+devicePlugin:
+  enabled: true
+  config:
+    # Empty name uses the default device plugin config (expose all GPUs).
+    name: ""
+
+# DCGM is deployed separately via kubernetes/dcgm-exporter/.
+dcgmExporter:
+  enabled: false
+
+dcgm:
+  enabled: true
+
+# Labels nodes with GPU model, driver version, CUDA version, etc.
+gfd:
+  enabled: true
+
+# MIG is not supported on g4dn (T4 GPU); keep disabled.
+migManager:
+  enabled: false
+
+# Spawns a validation pod after startup to confirm driver + container toolkit work.
+validator:
+  enabled: true
+
+nodeStatusExporter:
+  enabled: true
+
+node-feature-discovery:
+  enabled: true
+  worker:
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"

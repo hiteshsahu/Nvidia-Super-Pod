@@ -5,6 +5,9 @@ Built on AWS using Terraform, Ansible, Cloud-Init, and Kubernetes.
 - Automated deployment of NVIDIA GPU Operator, device plugins, CUDA runtime, and observability stack (DCGM Exporter, Prometheus, Grafana).
 - GPU monitoring, alerting, and AI workload execution for PyTorch and LLM inference workloads.
 
+
+![](./img/cover.png)
+
 ---
 
 ## 📋 Overview
@@ -126,42 +129,127 @@ nvidia-superpod/
 
 ---
 
-## 🚀 Getting Started
+## ▶️ Getting Started
 
-### Prerequisites
+### ⚡ Prerequisites
+
+### ℹ️  Check [supported Hardware](./HARDWARE.md)
+
+### 🖥️ Softwares
+
+Required tools
+- terraform >= 1.5
+- ansible >= 2.14
+- kubectl >= 1.28
+- helm >= 3.12
+- aws-cli >= 2.x
+
+Install Tools macOS
 
 ```bash
-# Required tools
-terraform >= 1.5
-ansible >= 2.14
-kubectl >= 1.28
-helm >= 3.12
-aws-cli >= 2.x
+brew install terraform ansible kubectl helm awscli
+
+# Python deps for Ansible dynamic inventory
+pip install boto3 botocore
+ansible-galaxy collection install amazon.aws kubernetes.core
+
+
+# Verify
+terraform version   # >= 1.5
+ansible --version   # >= 2.14
+helm version        # >= 3.12
+aws configure       # set your Access Key, Secret, region: eu-central-1
+
 ```
 
-### 1. Provision GPU Node on AWS
+Total time from zero to running cluster
+
+| Phase	                              | Time    |
+|-------------------------------------|---------|
+| Terraform apply	                    | ~3 min  |
+| cloud-init (runs in background)     | 	~5 min |
+| Ansible playbook 01 (k8s bootstrap) | 	~5 min |
+| Ansible playbook 02 (Helm stack)	   | ~12 min |
+| Ansible playbook 03 (workloads)	    | ~3 min  |
+| Total	                              | ~28 min |
+|                                     |         |
+Cost for one session: 28 min × $0.18/hr ≈ $0.08
+
+---
+
+## 👩🏻‍💻 Build Steps 
+
+### 1. 🏗️ Provision infrastructure (Terraform)
+
+Provision GPU Node on AWS
+
+
+Copy and fill in your values
+```bash
+cd terraform/
+# create terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit values in `terraform.tfvars`:
+```hcl
+  ssh_public_key    = "ssh-rsa AAAA..."   #  ← paste your public key
+  allowed_ssh_cidrs = ["YOUR.IP/32"]      #  ← your IP only
+```
+
+Scaffold Pod AWS Infrastructure
 
 ```bash
+
 cd terraform/
 terraform init
 terraform plan -var="ssh_public_key=$(cat ~/.ssh/id_rsa.pub)"
 terraform apply
 # Outputs the node IP, SSH command, and service URLs when complete.
+
 ```
 
 Cloud-init runs automatically on first boot and installs: NVIDIA driver 535, CUDA 12-3, Docker, NVIDIA Container Toolkit, kubectl, Helm, and DCGM. No manual driver steps required.
 
-### 2. Bootstrap Kubernetes (Ansible)
+
+Get IP of GPU Node it would be needed for next steps
+
+> NODE_IP=$(terraform output -raw gpu_node_public_ip)
+
+
+### 2. 🥾 Bootstrap Kubernetes (Ansible)
 
 ```bash
 cd ansible/
-# Update inventory/hosts.yml with the IP from: terraform output gpu_node_public_ip
 
+````
+
+Update [inventory/hosts.yml](./ansible/inventory/hosts.yml) with the IP from terraform output `gpu_node_public_ip` from previous step
+
+Put the node IP into the static inventory
+> sed -i '' 's/REPLACE_WITH_GPU_NODE_IP/x.x.x.x/' inventory/hosts.yml
+
+Run the Bootstrap Playbook
+
+```bash
 ansible-playbook playbooks/01-bootstrap-k8s.yml
 # Installs kubeadm + kubelet, runs kubeadm init, deploys Flannel CNI, labels GPU node.
+# ~5 min
+
 ```
 
-### 3. Deploy GPU Operator
+### 3. 🚀 Deploy the full stack (Ansible)
+
+### Deploy GPU Operator via Ansible
+
+```bash
+# Playbook 02: GPU Operator + kube-prometheus-stack + DCGM Exporter
+ansible-playbook playbooks/02-deploy-stack.yml
+# ~12 min — waits for each Helm release before proceeding
+
+```
+
+###  If you prefer manually
 
 ```bash
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
@@ -177,7 +265,27 @@ helm install gpu-operator nvidia/gpu-operator \
   --wait --timeout=10m
 ```
 
-### 5. Verify GPU Resources in Kubernetes
+### 5. 🧮 Deploy workloads and validate
+
+### Deploy Workload Jobs
+
+```bash
+# Playbook 03: CUDA validation job (asserted pass) + Triton Inference Server
+ansible-playbook playbooks/03-apply-workloads.yml
+```
+
+### Deploy Workload Tests
+
+
+```bash
+# Playbook 05: 7-check end-to-end health report
+ansible-playbook playbooks/05-validate.yml
+
+```
+
+### If you prefer manually
+
+Verify GPU Resources in Kubernetes
 
 ```bash
 kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
@@ -190,7 +298,7 @@ kubectl logs -n training job/cuda-validation
 # Expected last line: All GPU validation checks PASSED.
 ```
 
-### 6. Deploy Observability Stack
+### 6. 📊 Deploy Observability Stack
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -211,6 +319,56 @@ helm install dcgm-exporter nvidia/dcgm-exporter \
 
 # Grafana is available at http://<node-ip>:30300  (admin / superpod-changeme)
 ```
+
+
+### 7. 📟 Access services
+
+Get IP of GPU Node
+
+> NODE_IP=$(cd terraform && terraform output -raw gpu_node_public_ip)
+
+
+```bash
+
+# Grafana dashboard
+open http://$NODE_IP:30300
+# Login: admin / superpod-changeme
+
+# Triton health check
+curl http://$NODE_IP:30800/v2/health/ready
+
+# SSH into the node
+ssh -i ~/.ssh/id_rsa ubuntu@$NODE_IP
+nvidia-smi
+
+```
+
+Optional — Run GPU benchmarks
+
+```bash
+# PyTorch ResNet-50 throughput benchmark
+ansible-playbook playbooks/03-apply-workloads.yml --tags pytorch
+# Reports ~320 samples/sec on T4
+
+```
+
+---- 
+
+## ⛔ Clean up
+
+> ### ⚠️ DO NOT forget to clean up otherwise you will end up with Huge AWS bill
+
+
+Teardown — stop paying immediately
+
+```bash
+cd terraform/
+terraform destroy
+# Terminates the EC2 instance, releases EIP, deletes EBS volumes.
+# Cost drops to ~$0 (NAT Gateway and EIP are also destroyed).
+
+```
+
 
 ---
 
@@ -259,14 +417,14 @@ Step-by-step operational guides live in `/runbooks/`:
 
 ## 📈 Benchmark Results
 
-| Test | Hardware | Result |
-|------|----------|--------|
-| Host-to-Device bandwidth | T4 (g4dn.xlarge) | ~12.0 GB/s |
-| Device-to-Host bandwidth | T4 (g4dn.xlarge) | ~12.8 GB/s |
-| Device-to-Device bandwidth | T4 | ~255 GB/s |
-| CUDA deviceQuery | T4 | PASSED |
+| Test                          | Hardware            | Result           |
+|-------------------------------|---------------------|------------------|
+| Host-to-Device bandwidth      | T4 (g4dn.xlarge)    | ~12.0 GB/s       |
+| Device-to-Host bandwidth      | T4 (g4dn.xlarge)    | ~12.8 GB/s       |
+| Device-to-Device bandwidth    | T4                  | ~255 GB/s        |
+| CUDA deviceQuery              | T4                  | PASSED           |
 | ResNet-50 training throughput | T4 (batch=64, fp32) | ~320 samples/sec |
-| ResNet-50 step latency | T4 (batch=64, fp32) | ~200 ms/step |
+| ResNet-50 step latency        | T4 (batch=64, fp32) | ~200 ms/step     |
 
 ---
 

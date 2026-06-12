@@ -1,0 +1,130 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.tfplan
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.vim/
+.emacs.d/
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+*.pem
+*.key
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Kubernetes
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+
+# SSH Keys
+id_rsa
+id_dsa
+id_ed25519
+known_hosts
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log
+
+# Logs
+*.log
+logs/
+
+# Secrets and Credentials
+*.crt
+*.cert
+secrets/
+credentials/
+*.gpg
+*.enc
+
+# Local development
+local/
+tmp/
+temp/
+.DS_Store
+.AppleDouble
+
+# Build artifacts
+dist/
+build/
+*.o
+*.a
+*.so
+
+# Docker
+docker-compose.override.yml
+
+# Ansible
+*.retry
+vault-password
+
+# AWS/Cloud
+*.pem
+.aws/credentials
+.aws/config
+
+# Misc
+.~*
+*.bak
+*.backup
+.cache/

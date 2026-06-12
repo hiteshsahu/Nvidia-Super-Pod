@@ -1,0 +1,12 @@
+aws_region            = "eu-central-1"
+environment           = "lab"
+instance_type         = "g4dn.xlarge"
+use_spot_instance     = true
+spot_max_price        = "0.20"
+ssh_public_key        = "ssh-rsa AAAAB3... your-key"
+allowed_ssh_cidrs     = ["YOUR.IP.HERE/32"]
+root_volume_size_gb   = 100
+data_volume_size_gb   = 200
+nvidia_driver_version = "535"
+cuda_version          = "12-3"
+kubernetes_version    = "1.29"

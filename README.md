@@ -172,126 +172,141 @@ aws configure       # set your Access Key, Secret, region: eu-central-1
 ### Install Tools Windows
 
 
-Terraform (Windows):
-
-```powershell
-
-# Terraform
-choco install terraform -y
-```
-
-**kubectl and helm (install inside WSL Ubuntu):**
+1. **AWS CLI:** Download and Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+    
+    AWS CLI installed and configured (`aws configure`)
 
 
-```powershell
+2. **Terraform** (Windows):
 
-# Check WSL version
-uname -a
-lsb_release -a
+    ```powershell
+    
+    # Terraform
+    choco install terraform -y
+    ```
 
-# kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+3. ### [Install Docker within WSL](https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly)
 
-# helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-# Verify
-kubectl version --client
-helm version
-```
-
-
-Ansible, Python, Git (inside WSL Ubuntu):
-
-```powershell
-sudo apt update
-sudo apt install -y python3 python3-pip git ansible
-# optional: upgrade pip and install Ansible collections if needed
-python3 -m pip install --user --upgrade pip
-ansible --version
-
-```
-
-### [Install Docker within WSL](https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly)
-
-Ubuntu 18.04 / 20.04 installation notes taken from Docker’s documentation:
-
-```bash
-# Update the apt package list.
-sudo apt-get update -y
-
-# Install Docker's package dependencies.
-sudo apt-get install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    software-properties-common
-
-# Download and add Docker's official public PGP key.
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-
-# Verify the fingerprint.
-sudo apt-key fingerprint 0EBFCD88
-
-# Add the `stable` channel's Docker upstream repository.
-#
-# If you want to live on the edge, you can change "stable" below to "test" or
-# "nightly". I highly recommend sticking with stable!
-sudo add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
-
-# Update the apt package list (for the new apt repo).
-sudo apt-get update -y
-
-# Install the latest version of Docker CE.
-sudo apt-get install -y docker-ce
-
-# Allow your user to access the Docker CLI without needing root access.
-sudo usermod -aG docker $USER
+    Ubuntu 18.04 / 20.04 installation notes taken from Docker’s documentation:
+    
+    ```bash
+    # Update the apt package list.
+    sudo apt-get update -y
+    
+    # Install Docker's package dependencies.
+    sudo apt-get install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        software-properties-common
+    
+    # Download and add Docker's official public PGP key.
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    
+    # Verify the fingerprint.
+    sudo apt-key fingerprint 0EBFCD88
+    
+    # Add the `stable` channel's Docker upstream repository.
+    #
+    # If you want to live on the edge, you can change "stable" below to "test" or
+    # "nightly". I highly recommend sticking with stable!
+    sudo add-apt-repository \
+       "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+       $(lsb_release -cs) \
+       stable"
+    
+    # Update the apt package list (for the new apt repo).
+    sudo apt-get update -y
+    
+    # Install the latest version of Docker CE.
+    sudo apt-get install -y docker-ce
+    
+    # Allow your user to access the Docker CLI without needing root access.
+    sudo usermod -aG docker $USER
+    
+    
+    ```
 
 
-```
+4. ### Install Docker Compose within WSL
+    The following instructions are for Ubuntu 18.04 / 20.04, but if you happen to use a different WSL distribution, you can follow Docker’s installation guide for your distro from Docker’s installation docs.
+    
+    ```bash
+    # Install Python 3 and PIP.
+    sudo apt-get install -y python3 python3-pip
+    
+    # Install Docker Compose into your user's home directory.
+    pip3 install --user docker-compose
+    
+    
+    ```
+
+    **Verify Docker GPU access (inside WSL)**
+    
+    ```bash
+    docker run --rm --gpus all nvidia/cuda:12.3.2-base-ubuntu22.04 nvidia-smi
+    ```
 
 
-### Install Docker Compose within WSL
-The following instructions are for Ubuntu 18.04 / 20.04, but if you happen to use a different WSL distribution, you can follow Docker’s installation guide for your distro from Docker’s installation docs.
+5. ### **kubectl and helm (install inside WSL Ubuntu):**
 
-```bash
-# Install Python 3 and PIP.
-sudo apt-get install -y python3 python3-pip
+    **Enable Kubernetes in Docker Desktop**
+    Docker Desktop → Settings → Kubernetes → Enable Kubernetes → Apply & Restart
+    
+    ```powershell
+    # Check WSL version
+    uname -a
+    lsb_release -a
+    
+    
+    # kubectl
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    
+    # helm
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    
+    # Verify
+    kubectl version --client
+    helm version
+    ```
 
-# Install Docker Compose into your user's home directory.
-pip3 install --user docker-compose
+6.  Ansible, Python, Git (inside WSL Ubuntu):
+    
+    ```powershell
+    sudo apt update
+    sudo apt install -y python3 python3-pip git ansible
+    # optional: upgrade pip and install Ansible collections if needed
+    python3 -m pip install --user --upgrade pip
+    ansible --version
+    
+    ```
+
+7. ### Set `$PATH`
+    `nano ~/.profile`
+    
+    On a new line, add export `PATH="$PATH:$HOME/.local/bin"` and save the file.
+    
+    check $PATH is set
+    > echo $PATH
+    
+
+8. ### Check Everything works
+    
+    ```bash
+    # You should get a bunch of output about your Docker daemon.
+    # If you get a permission denied error, close + open your terminal and try again.
+    docker info
+    
+    # You should get back your Docker Compose version.
+    docker-compose --version
+    
+    ```
 
 
-```
+---
 
-
-
-### Set `$PATH`
-`nano ~/.profile`
-
-On a new line, add export `PATH="$PATH:$HOME/.local/bin"` and save the file.
-
-check $PATH is set
-> echo $PATH
-
-
-### Check Everything works
-
-```bash
-# You should get a bunch of output about your Docker daemon.
-# If you get a permission denied error, close + open your terminal and try again.
-docker info
-
-# You should get back your Docker Compose version.
-docker-compose --version
-
-```
-
+## 👩🏻‍💻 Build Steps 
 
 Total time from zero to running cluster
 
@@ -306,44 +321,59 @@ Total time from zero to running cluster
 |                                     |         |
 Cost for one session: 28 min × $0.18/hr ≈ $0.08
 
----
-
-## 👩🏻‍💻 Build Steps 
 
 ### 1. 🏗️ Provision infrastructure (Terraform)
+> Provision GPU Node on AWS
 
-Provision GPU Node on AWS
 
-
+### Update TfVars
 Copy and fill in your values
+
 ```bash
 cd terraform/
+
 # create terraform.tfvars
 cp terraform.tfvars.example terraform.tfvars
 ```
 
 Edit values in `terraform.tfvars`:
+
 ```hcl
   ssh_public_key    = "ssh-rsa AAAA..."   #  ← paste your public key
   allowed_ssh_cidrs = ["YOUR.IP/32"]      #  ← your IP only
 ```
 
-Create SSH key for repo/terraform in WSL2
+You can get both values as described below
+
+1. Create SSH key for repo/terraform in WSL2
+    
+    ```bash
+    # Create folder if not exist
+    mkdir "%USERPROFILE%\.ssh"
+    
+    # Generate Keypair
+    ssh-keygen -t rsa -b 4096 -f "%USERPROFILE%\.ssh\id_rsa" -N ""
+    
+    # View and copy
+    "%USERPROFILE%\.ssh\id_rsa.pub"
+    
+    ```
+
+2. Get IP Address
+
+    > curl https://checkip.amazonaws.com
+
+
+### **Scaffold Pod AWS Infrastructure**
 
 ```bash
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
-cat ~/.ssh/id_rsa.pub
-
-```
-
-Scaffold Pod AWS Infrastructure
-
-```bash
-
 cd terraform/
 terraform init
-terraform plan -var="ssh_public_key=$(cat ~/.ssh/id_rsa.pub)"
+
+# Plan Infra
+terraform plan
+
+# Scaffold GPUs
 terraform apply
 # Outputs the node IP, SSH command, and service URLs when complete.
 
@@ -351,11 +381,42 @@ terraform apply
 
 Cloud-init runs automatically on first boot and installs: NVIDIA driver 535, CUDA 12-3, Docker, NVIDIA Container Toolkit, kubectl, Helm, and DCGM. No manual driver steps required.
 
+If everything goes as plan you will end up with a server with `g4dn.xlarge` GPU 
 
+### g4dn.xlarge
+- GPU: 1x NVIDIA T4 Tensor Core GPU (with 16 GiB of VRAM)
+- Cost: On-Demand: Starts at roughly **$0.526** per hour.
+- vCPUs: 4
+- VRAM Memory: 16 GiB
+- Local Storage: 125 GB NVMe SSD
+- Network Bandwidth: Up to 25 Gbps
+
+
+### **Note:**
 Get IP of GPU Node it would be needed for next steps
 
-> NODE_IP=$(terraform output -raw gpu_node_public_ip)
+``NODE_IP=$(terraform output -raw gpu_node_public_ip)``
 
+
+### ⚠️ `terraform apply` failed to config `vGPUs`
+If you encounter this error message
+> You have requested more vCPU capacity than your current vCPU limit of 0 allows for the instance bucket that the specified instance type belongs to.
+
+That means your AWS account has a `vCPU` limit of 0 for GPU instances.
+
+**New accounts start with this restriction. You need to request a limit increase.**
+
+**Request the limit increase:**
+
+- Go to **AWS Console → Service Quotas → AWS Services → Amazon EC2**
+- Search for "Running On-Demand G and VT instances"
+- Click it → **Request increase at account level**
+- Request 4 vCPUs (minimum for g4dn.xlarge)
+- Submit
+
+AWS usually approves this within a few hours to 1 business day.
+
+---
 
 ### 2. 🥾 Bootstrap Kubernetes (Ansible)
 

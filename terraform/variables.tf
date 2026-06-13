@@ -17,7 +17,7 @@ variable "environment" {
 variable "instance_type" {
   description = "EC2 instance type for the GPU node (must be a GPU-enabled type such as g4dn, p3, p4d)"
   type        = string
-  default     = "g4dn.xlarge"
+  default     = "g4dn.xlarge" // "t3.medium"
 }
 
 variable "use_spot_instance" {

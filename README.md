@@ -148,9 +148,10 @@ Required tools
 - helm >= 3.12
 - aws-cli >= 2.x
 
-Install Tools macOS
+### Install Tools macOS
 
 ```bash
+
 brew install terraform ansible kubectl helm awscli
 
 # Python deps for Ansible dynamic inventory
@@ -165,6 +166,132 @@ helm version        # >= 3.12
 aws configure       # set your Access Key, Secret, region: eu-central-1
 
 ```
+
+---
+
+### Install Tools Windows
+
+
+Terraform (Windows):
+
+```powershell
+
+# Terraform
+choco install terraform -y
+```
+
+**kubectl and helm (install inside WSL Ubuntu):**
+
+
+```powershell
+
+# Check WSL version
+uname -a
+lsb_release -a
+
+# kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Verify
+kubectl version --client
+helm version
+```
+
+
+Ansible, Python, Git (inside WSL Ubuntu):
+
+```powershell
+sudo apt update
+sudo apt install -y python3 python3-pip git ansible
+# optional: upgrade pip and install Ansible collections if needed
+python3 -m pip install --user --upgrade pip
+ansible --version
+
+```
+
+### [Install Docker within WSL](https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly)
+
+Ubuntu 18.04 / 20.04 installation notes taken from Docker’s documentation:
+
+```bash
+# Update the apt package list.
+sudo apt-get update -y
+
+# Install Docker's package dependencies.
+sudo apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    software-properties-common
+
+# Download and add Docker's official public PGP key.
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+# Verify the fingerprint.
+sudo apt-key fingerprint 0EBFCD88
+
+# Add the `stable` channel's Docker upstream repository.
+#
+# If you want to live on the edge, you can change "stable" below to "test" or
+# "nightly". I highly recommend sticking with stable!
+sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+
+# Update the apt package list (for the new apt repo).
+sudo apt-get update -y
+
+# Install the latest version of Docker CE.
+sudo apt-get install -y docker-ce
+
+# Allow your user to access the Docker CLI without needing root access.
+sudo usermod -aG docker $USER
+
+
+```
+
+
+### Install Docker Compose within WSL
+The following instructions are for Ubuntu 18.04 / 20.04, but if you happen to use a different WSL distribution, you can follow Docker’s installation guide for your distro from Docker’s installation docs.
+
+```bash
+# Install Python 3 and PIP.
+sudo apt-get install -y python3 python3-pip
+
+# Install Docker Compose into your user's home directory.
+pip3 install --user docker-compose
+
+
+```
+
+
+
+### Set `$PATH`
+`nano ~/.profile`
+
+On a new line, add export `PATH="$PATH:$HOME/.local/bin"` and save the file.
+
+check $PATH is set
+> echo $PATH
+
+
+### Check Everything works
+
+```bash
+# You should get a bunch of output about your Docker daemon.
+# If you get a permission denied error, close + open your terminal and try again.
+docker info
+
+# You should get back your Docker Compose version.
+docker-compose --version
+
+```
+
 
 Total time from zero to running cluster
 
@@ -199,6 +326,15 @@ Edit values in `terraform.tfvars`:
 ```hcl
   ssh_public_key    = "ssh-rsa AAAA..."   #  ← paste your public key
   allowed_ssh_cidrs = ["YOUR.IP/32"]      #  ← your IP only
+```
+
+Create SSH key for repo/terraform in WSL2
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+cat ~/.ssh/id_rsa.pub
+
 ```
 
 Scaffold Pod AWS Infrastructure

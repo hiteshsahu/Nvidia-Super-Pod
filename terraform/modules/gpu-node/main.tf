@@ -5,15 +5,22 @@
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
-  filter { name = "name",               values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"] }
-  filter { name = "virtualization-type",values = ["hvm"] }
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
 }
 
 resource "aws_placement_group" "gpu_cluster" {
   count    = var.enable_placement_group ? 1 : 0
   name     = "${var.name}-pg"
   strategy = "cluster"
-  tags     = merge(var.tags, { Name = "${var.name}-placement-group" })
+  tags = merge(var.tags,
+  { Name = "${var.name}-placement-group" })
 }
 
 resource "aws_security_group" "gpu_node" {
@@ -21,45 +28,103 @@ resource "aws_security_group" "gpu_node" {
   description = "GPU node security group"
   vpc_id      = var.vpc_id
 
-  ingress { description = "SSH",            from_port = 22,   to_port = 22,   protocol = "tcp",cidr_blocks = var.allowed_cidrs }
-  ingress { description = "Kubernetes API", from_port = 6443, to_port = 6443, protocol = "tcp",cidr_blocks = var.allowed_cidrs }
-  ingress { description = "NodePort range", from_port = 30000,to_port = 32767,protocol = "tcp",cidr_blocks = var.allowed_cidrs }
-  ingress { description = "Grafana",        from_port = 3000, to_port = 3000, protocol = "tcp",cidr_blocks = var.allowed_cidrs }
-  ingress { description = "Prometheus",     from_port = 9090, to_port = 9090, protocol = "tcp",cidr_blocks = var.allowed_cidrs }
-  ingress { description = "DCGM Exporter",  from_port = 9400, to_port = 9400, protocol = "tcp",cidr_blocks = var.allowed_cidrs }
-  ingress { description = "Node Exporter",  from_port = 9100, to_port = 9100, protocol = "tcp",self = true }
-  ingress { description = "Intra-cluster",  from_port = 0,    to_port = 0,    protocol = "-1", self = true }
-  egress  { description = "All outbound",   from_port = 0,    to_port = 0,    protocol = "-1", cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
+  }
+  ingress {
+    description = "Kubernetes API"
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
+  }
+  ingress {
+    description = "NodePort range"
+    from_port   = 30000
+    to_port     = 32767
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
+  }
+  ingress {
+    description = "Grafana"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
+  }
+  ingress {
+    description = "Prometheus"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
+  }
+  ingress {
+    description = "DCGM Exporter"
+    from_port   = 9400
+    to_port     = 9400
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
+  }
+  ingress {
+    description = "Node Exporter"
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    self        = true
+  }
+  ingress {
+    description = "Intra-cluster"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+  }
+  egress {
+    description = "All outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  tags = merge(var.tags, { Name = "${var.name}-sg" })
+  tags = merge(var.tags,
+  { Name = "${var.name}-sg" })
 }
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
-    principals { type = "Service",identifiers = ["ec2.amazonaws.com"] }
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
   }
 }
 
 data "aws_iam_policy_document" "gpu_node_policy" {
   statement {
-    sid     = "CloudWatchMetrics"
-    actions = ["cloudwatch:PutMetricData","cloudwatch:GetMetricData","cloudwatch:ListMetrics"]
+    sid       = "CloudWatchMetrics"
+    actions   = ["cloudwatch:PutMetricData", "cloudwatch:GetMetricData", "cloudwatch:ListMetrics"]
     resources = ["*"]
   }
   statement {
-    sid     = "CloudWatchLogs"
-    actions = ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents","logs:DescribeLogStreams"]
+    sid       = "CloudWatchLogs"
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"]
     resources = ["arn:aws:logs:*:*:*"]
   }
   statement {
-    sid     = "S3DataAccess"
-    actions = ["s3:GetObject","s3:PutObject","s3:ListBucket"]
-    resources = ["arn:aws:s3:::${var.data_bucket_name}","arn:aws:s3:::${var.data_bucket_name}/*"]
+    sid       = "S3DataAccess"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
+    resources = ["arn:aws:s3:::${var.data_bucket_name}", "arn:aws:s3:::${var.data_bucket_name}/*"]
   }
   statement {
-    sid     = "ECRPull"
-    actions = ["ecr:GetAuthorizationToken","ecr:BatchCheckLayerAvailability","ecr:GetDownloadUrlForLayer","ecr:BatchGetImage"]
+    sid       = "ECRPull"
+    actions   = ["ecr:GetAuthorizationToken", "ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
     resources = ["*"]
   }
 }
@@ -118,7 +183,10 @@ resource "aws_instance" "gpu_node" {
     for_each = var.use_spot_instance ? [1] : []
     content {
       market_type = "spot"
-      spot_options { max_price = var.spot_max_price,instance_interruption_behavior = "terminate" }
+      spot_options {
+        max_price                      = var.spot_max_price
+        instance_interruption_behavior = "terminate"
+      }
     }
   }
 
@@ -148,7 +216,9 @@ resource "aws_instance" "gpu_node" {
     http_put_response_hop_limit = 1
   }
 
-  tags = merge(var.tags, { Name = "${var.name}" })
+  tags = merge(var.tags,
+    { Name = "${var.name}"
+  })
   lifecycle { ignore_changes = [ami, user_data] }
 }
 

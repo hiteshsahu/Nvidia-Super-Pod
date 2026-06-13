@@ -48,7 +48,10 @@ resource "aws_nat_gateway" "this" {
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
-  route { cidr_block = "0.0.0.0/0", gateway_id = aws_internet_gateway.this.id }
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
   tags   = merge(var.tags, { Name = "${var.name}-public-rt" })
 }
 
@@ -61,7 +64,10 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table" "private" {
   count  = var.enable_nat_gateway ? length(var.private_subnet_cidrs) : 0
   vpc_id = aws_vpc.this.id
-  route  { cidr_block = "0.0.0.0/0", nat_gateway_id = aws_nat_gateway.this[count.index].id }
+  route  {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this[count.index].id
+  }
   tags   = merge(var.tags, { Name = "${var.name}-private-rt-${count.index + 1}" })
 }
 
@@ -82,7 +88,10 @@ data "aws_iam_policy_document" "flow_logs_assume" {
   count = var.enable_flow_logs ? 1 : 0
   statement {
     actions = ["sts:AssumeRole"]
-    principals { type = "Service", identifiers = ["vpc-flow-logs.amazonaws.com"] }
+    principals {
+      type = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
   }
 }
 

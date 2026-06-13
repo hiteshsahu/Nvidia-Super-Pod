@@ -58,6 +58,12 @@
       changed_when: "'has been added' in r.stdout"
       failed_when: r.rc != 0 and 'already exists' not in r.stderr
 
+    - name: Add DCGM Exporter Helm repo
+      command: helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
+      register: r
+      changed_when: "'has been added' in r.stdout"
+      failed_when: r.rc != 0 and 'already exists' not in r.stderr
+
     - name: Update all Helm repos
       command: helm repo update
       changed_when: false
@@ -143,7 +149,7 @@
     - name: Install DCGM Exporter
       when: dcgm_status.rc != 0
       command: >
-        helm install dcgm-exporter nvidia/dcgm-exporter
+        helm install dcgm-exporter gpu-helm-charts/dcgm-exporter
         --namespace monitoring
         --version {{ dcgm_exporter_version }}
         -f /home/ubuntu/kubernetes/dcgm-exporter/values.yaml

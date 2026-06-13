@@ -31,7 +31,7 @@
     - name: Apply CUDA validation job
       command: >
         kubectl apply -f
-        {{ playbook_dir }}/../../kubernetes/workloads/cuda-test.yaml
+        /home/ubuntu/kubernetes/workloads/cuda-test.yaml
       register: cuda_apply
       changed_when: "'created' in cuda_apply.stdout"
 
@@ -72,7 +72,7 @@
     - name: Apply Triton Inference Server
       command: >
         kubectl apply -f
-        {{ playbook_dir }}/../../kubernetes/workloads/triton.yaml
+        /home/ubuntu/kubernetes/workloads/triton.yaml
       register: triton_apply
       changed_when: >
         'created' in triton_apply.stdout or
@@ -112,7 +112,7 @@
       tags: pytorch
       command: >
         kubectl apply -f
-        {{ playbook_dir }}/../../kubernetes/workloads/pytorch-job.yaml
+        /home/ubuntu/kubernetes/workloads/pytorch-job.yaml
       register: pytorch_apply
       changed_when: "'created' in pytorch_apply.stdout"
 

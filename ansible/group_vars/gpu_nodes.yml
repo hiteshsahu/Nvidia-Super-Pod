@@ -7,7 +7,7 @@ k8s_version:                "1.29"       # used for apt repo and kubeadm
 driver_version:             "535"        # NVIDIA driver major version
 cuda_version:               "12-3"       # CUDA toolkit apt package suffix
 gpu_operator_version:       "v24.3.0"
-dcgm_exporter_version:      "3.3.5"
+dcgm_exporter_version:      "4.8.2"
 kube_prometheus_stack_version: "58.7.2"
 
 # --- Kubernetes networking ---

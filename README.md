@@ -293,7 +293,7 @@ allowed_ssh_cidrs = ["YOUR.IP/32"]         # ← output of: curl https://checkip
 ```cmd
 terraform init
 terraform plan
-terraform apply
+terraform apply -auto-approve
 ```
 
 Note the outputs — you'll need `gpu_node_public_ip` for the next steps.
@@ -336,6 +336,7 @@ ssh -i "%USERPROFILE%\.ssh\id_rsa" ubuntu@<NODE_IP>
 ```
 
 Watch cloud-init progress (runs automatically on first boot, ~5 min):
+
 ```bash
 sudo tail -f /var/log/cloud-init-output.log
 ```

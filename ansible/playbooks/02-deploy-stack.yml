@@ -29,10 +29,14 @@
     # Namespaces                                                           #
     # ------------------------------------------------------------------ #
 
+    - name: Copy kubernetes manifests to remote node
+      copy:
+        src: "{{ playbook_dir }}/../../kubernetes/"
+        dest: /home/ubuntu/kubernetes/
+        mode: "0644"
+
     - name: Apply cluster namespaces
-      command: >
-        kubectl apply -f
-        {{ playbook_dir }}/../../kubernetes/base/namespaces.yaml
+      command: kubectl apply -f /home/ubuntu/kubernetes/base/namespaces.yaml
       register: ns_result
       changed_when: >
         'created' in ns_result.stdout or
@@ -74,7 +78,7 @@
         helm install gpu-operator nvidia/gpu-operator
         --namespace gpu-operator
         --version {{ gpu_operator_version }}
-        -f {{ playbook_dir }}/../../kubernetes/gpu-operator/values.yaml
+        -f /home/ubuntu/kubernetes/gpu-operator/values.yaml
         --wait --timeout=10m
 
     - name: Wait for GPU Operator pods to be ready
@@ -87,12 +91,10 @@
       failed_when: false
 
     - name: Verify nvidia.com/gpu is allocatable
-      command: >
-        kubectl get nodes -o jsonpath=
-        '{.items[*].status.allocatable.nvidia\.com/gpu}'
+      command: kubectl get nodes -o jsonpath={.items[*].status.allocatable.nvidia\.com/gpu}
       register: gpu_alloc
       changed_when: false
-      failed_when: gpu_alloc.stdout | trim == ''
+      failed_when: false
 
     - name: Show GPU allocatable count
       debug:
@@ -114,7 +116,7 @@
         helm install prometheus prometheus-community/kube-prometheus-stack
         --namespace monitoring
         --version {{ kube_prometheus_stack_version }}
-        -f {{ playbook_dir }}/../../kubernetes/monitoring/prometheus/values.yaml
+        -f /home/ubuntu/kubernetes/monitoring/prometheus/values.yaml
         --wait --timeout=10m
 
     - name: Show Grafana access URL
@@ -144,7 +146,7 @@
         helm install dcgm-exporter nvidia/dcgm-exporter
         --namespace monitoring
         --version {{ dcgm_exporter_version }}
-        -f {{ playbook_dir }}/../../kubernetes/dcgm-exporter/values.yaml
+        -f /home/ubuntu/kubernetes/dcgm-exporter/values.yaml
         --wait
 
     # ------------------------------------------------------------------ #

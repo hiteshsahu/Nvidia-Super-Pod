@@ -206,7 +206,7 @@ resource "aws_instance" "gpu_node" {
     k8s_version        = var.kubernetes_version
     node_name          = var.name
     enable_dcgm        = var.enable_dcgm_exporter
-    data_volume_device = "/dev/sdf"
+    data_volume_device = "/dev/nvme1n1"
     data_volume_mount  = "/mnt/data"
   }))
 
@@ -224,7 +224,7 @@ resource "aws_instance" "gpu_node" {
 
 resource "aws_volume_attachment" "data" {
   count       = var.data_volume_size_gb > 0 ? 1 : 0
-  device_name = "/dev/sdf"
+  device_name = "/dev/xvdf"
   volume_id   = aws_ebs_volume.data[0].id
   instance_id = aws_instance.gpu_node.id
 }

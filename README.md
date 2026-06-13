@@ -171,273 +171,225 @@ aws configure       # set your Access Key, Secret, region: eu-central-1
 
 ### Install Tools Windows
 
+> **Note:** Terraform and AWS CLI run on Windows. Ansible must run inside WSL2 — it is Linux-only.
 
-1. **AWS CLI:** Download and Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-    
-    AWS CLI installed and configured (`aws configure`)
+**1. AWS CLI (Windows)**
 
+Download and run the MSI: `https://awscli.amazonaws.com/AWSCLIV2.msi`
 
-2. **Terraform** (Windows):
+```cmd
+# Verify
+aws --version   # aws-cli/2.x
+```
 
-    ```powershell
-    
-    # Terraform
-    choco install terraform -y
-    ```
+**2. Terraform (Windows)**
 
-3. ### [Install Docker within WSL](https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly)
+Download the zip from `https://developer.hashicorp.com/terraform/install` → Windows → AMD64.
+Extract `terraform.exe` to `C:\terraform\` then add to PATH:
 
-    Ubuntu 18.04 / 20.04 installation notes taken from Docker’s documentation:
-    
-    ```bash
-    # Update the apt package list.
-    sudo apt-get update -y
-    
-    # Install Docker's package dependencies.
-    sudo apt-get install -y \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        software-properties-common
-    
-    # Download and add Docker's official public PGP key.
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    
-    # Verify the fingerprint.
-    sudo apt-key fingerprint 0EBFCD88
-    
-    # Add the `stable` channel's Docker upstream repository.
-    #
-    # If you want to live on the edge, you can change "stable" below to "test" or
-    # "nightly". I highly recommend sticking with stable!
-    sudo add-apt-repository \
-       "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-       $(lsb_release -cs) \
-       stable"
-    
-    # Update the apt package list (for the new apt repo).
-    sudo apt-get update -y
-    
-    # Install the latest version of Docker CE.
-    sudo apt-get install -y docker-ce
-    
-    # Allow your user to access the Docker CLI without needing root access.
-    sudo usermod -aG docker $USER
-    
-    
-    ```
+```powershell
+# Run as Administrator
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\terraform", "Machine")
+```
 
+Restart your terminal, then verify:
+```cmd
+terraform version   # >= 1.5
+```
 
-4. ### Install Docker Compose within WSL
-    The following instructions are for Ubuntu 18.04 / 20.04, but if you happen to use a different WSL distribution, you can follow Docker’s installation guide for your distro from Docker’s installation docs.
-    
-    ```bash
-    # Install Python 3 and PIP.
-    sudo apt-get install -y python3 python3-pip
-    
-    # Install Docker Compose into your user's home directory.
-    pip3 install --user docker-compose
-    
-    
-    ```
+**3. SSH Key (Windows CMD)**
 
-    **Verify Docker GPU access (inside WSL)**
-    
-    ```bash
-    docker run --rm --gpus all nvidia/cuda:12.3.2-base-ubuntu22.04 nvidia-smi
-    ```
+```cmd
+mkdir "%USERPROFILE%\.ssh"
+ssh-keygen -t rsa -b 4096 -f "%USERPROFILE%\.ssh\id_rsa"
 
+# View and copy your public key
+type "%USERPROFILE%\.ssh\id_rsa.pub"
+```
 
-5. ### **kubectl and helm (install inside WSL Ubuntu):**
+**4. AWS Credentials (Windows CMD)**
 
-    **Enable Kubernetes in Docker Desktop**
-    Docker Desktop → Settings → Kubernetes → Enable Kubernetes → Apply & Restart
-    
-    ```powershell
-    # Check WSL version
-    uname -a
-    lsb_release -a
-    
-    
-    # kubectl
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-    
-    # helm
-    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-    
-    # Verify
-    kubectl version --client
-    helm version
-    ```
+```cmd
+aws configure
+# Enter: Access Key ID, Secret Access Key, region (eu-central-1), output (json)
 
-6.  Ansible, Python, Git (inside WSL Ubuntu):
-    
-    ```powershell
-    sudo apt update
-    sudo apt install -y python3 python3-pip git ansible
-    # optional: upgrade pip and install Ansible collections if needed
-    python3 -m pip install --user --upgrade pip
-    ansible --version
-    
-    ```
+# Verify
+aws sts get-caller-identity
+```
 
-7. ### Set `$PATH`
-    `nano ~/.profile`
-    
-    On a new line, add export `PATH="$PATH:$HOME/.local/bin"` and save the file.
-    
-    check $PATH is set
-    > echo $PATH
-    
+**5. Ansible + Helm + kubectl (WSL2 Ubuntu)**
 
-8. ### Check Everything works
-    
-    ```bash
-    # You should get a bunch of output about your Docker daemon.
-    # If you get a permission denied error, close + open your terminal and try again.
-    docker info
-    
-    # You should get back your Docker Compose version.
-    docker-compose --version
-    
-    ```
+Ansible is Linux-only. Open WSL2 (`wsl` from Start menu) and run:
+
+```bash
+# Remove old apt ansible (too old — must be >= 2.14)
+sudo apt remove ansible -y
+pip3 install --user ansible
+echo ‘export PATH="$PATH:$HOME/.local/bin"’ >> ~/.bashrc
+source ~/.bashrc
+ansible --version   # ansible core 2.17+
+
+# kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+**6. Copy SSH key into WSL2 with correct permissions**
+
+Windows SSH keys have 0777 permissions which SSH rejects inside WSL2. Copy and fix:
+
+```bash
+mkdir -p ~/.ssh
+cp /mnt/c/Users/<your-windows-username>/.ssh/id_rsa ~/.ssh/id_rsa_superpod
+chmod 600 ~/.ssh/id_rsa_superpod
+```
+
+**7. Point kubectl at Docker Desktop cluster (if using local Kubernetes)**
+
+```bash
+export KUBECONFIG=/mnt/c/Users/<your-windows-username>/.kube/config
+echo ‘export KUBECONFIG=/mnt/c/Users/<your-windows-username>/.kube/config’ >> ~/.bashrc
+```
 
 
 ---
 
-## 👩🏻‍💻 Build Steps 
+## 👩🏻‍💻 Build Steps
 
 Total time from zero to running cluster
 
-| Phase	                              | Time    |
+| Phase                               | Time    |
 |-------------------------------------|---------|
-| Terraform apply	                    | ~3 min  |
-| cloud-init (runs in background)     | 	~5 min |
-| Ansible playbook 01 (k8s bootstrap) | 	~5 min |
-| Ansible playbook 02 (Helm stack)	   | ~12 min |
-| Ansible playbook 03 (workloads)	    | ~3 min  |
-| Total	                              | ~28 min |
-|                                     |         |
+| Terraform apply                     | ~3 min  |
+| cloud-init (runs in background)     | ~5 min  |
+| Ansible playbook 01 (k8s bootstrap) | ~5 min  |
+| Ansible playbook 02 (Helm stack)    | ~12 min |
+| Ansible playbook 03 (workloads)     | ~3 min  |
+| **Total**                           | **~28 min** |
+
 Cost for one session: 28 min × $0.18/hr ≈ $0.08
-
-
-### 1. 🏗️ Provision infrastructure (Terraform)
-> Provision GPU Node on AWS
-
-
-### Update TfVars
-Copy and fill in your values
-
-```bash
-cd terraform/
-
-# create terraform.tfvars
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit values in `terraform.tfvars`:
-
-```hcl
-  ssh_public_key    = "ssh-rsa AAAA..."   #  ← paste your public key
-  allowed_ssh_cidrs = ["YOUR.IP/32"]      #  ← your IP only
-```
-
-You can get both values as described below
-
-1. Create SSH key for repo/terraform in WSL2
-    
-    ```bash
-    # Create folder if not exist
-    mkdir "%USERPROFILE%\.ssh"
-    
-    # Generate Keypair
-    ssh-keygen -t rsa -b 4096 -f "%USERPROFILE%\.ssh\id_rsa" -N ""
-    
-    # View and copy
-    "%USERPROFILE%\.ssh\id_rsa.pub"
-    
-    ```
-
-2. Get IP Address
-
-    > curl https://checkip.amazonaws.com
-
-
-### **Scaffold Pod AWS Infrastructure**
-
-```bash
-cd terraform/
-terraform init
-
-# Plan Infra
-terraform plan
-
-# Scaffold GPUs
-terraform apply
-# Outputs the node IP, SSH command, and service URLs when complete.
-
-```
-
-Cloud-init runs automatically on first boot and installs: NVIDIA driver 535, CUDA 12-3, Docker, NVIDIA Container Toolkit, kubectl, Helm, and DCGM. No manual driver steps required.
-
-If everything goes as plan you will end up with a server with `g4dn.xlarge` GPU 
-
-### g4dn.xlarge
-- GPU: 1x NVIDIA T4 Tensor Core GPU (with 16 GiB of VRAM)
-- Cost: On-Demand: Starts at roughly **$0.526** per hour.
-- vCPUs: 4
-- VRAM Memory: 16 GiB
-- Local Storage: 125 GB NVMe SSD
-- Network Bandwidth: Up to 25 Gbps
-
-
-### **Note:**
-Get IP of GPU Node it would be needed for next steps
-
-``NODE_IP=$(terraform output -raw gpu_node_public_ip)``
-
-
-### ⚠️ `terraform apply` failed to config `vGPUs`
-If you encounter this error message
-> You have requested more vCPU capacity than your current vCPU limit of 0 allows for the instance bucket that the specified instance type belongs to.
-
-That means your AWS account has a `vCPU` limit of 0 for GPU instances.
-
-**New accounts start with this restriction. You need to request a limit increase.**
-
-**Request the limit increase:**
-
-- Go to **AWS Console → Service Quotas → AWS Services → Amazon EC2**
-- Search for "Running On-Demand G and VT instances"
-- Click it → **Request increase at account level**
-- Request 4 vCPUs (minimum for g4dn.xlarge)
-- Submit
-
-AWS usually approves this within a few hours to 1 business day.
 
 ---
 
-### 2. 🥾 Bootstrap Kubernetes (Ansible)
+### 1. 🏗️ Provision Infrastructure (Terraform)
 
-```bash
-cd ansible/
+**Run from Windows CMD:**
 
-````
+```cmd
+cd /d e:\WorkSpace\GitHub\Nvidia-Super-Pod\terraform
+cp terraform.tfvars.example terraform.tfvars
+```
 
-Update [inventory/hosts.yml](./ansible/inventory/hosts.yml) with the IP from terraform output `gpu_node_public_ip` from previous step
+Edit `terraform.tfvars` with your values:
 
-Put the node IP into the static inventory
-> sed -i '' 's/REPLACE_WITH_GPU_NODE_IP/x.x.x.x/' inventory/hosts.yml
+```hcl
+ssh_public_key    = "ssh-rsa AAAA..."      # ← output of: type "%USERPROFILE%\.ssh\id_rsa.pub"
+allowed_ssh_cidrs = ["YOUR.IP/32"]         # ← output of: curl https://checkip.amazonaws.com
+```
 
-Run the Bootstrap Playbook
+```cmd
+terraform init
+terraform plan
+terraform apply
+```
 
-```bash
-ansible-playbook playbooks/01-bootstrap-k8s.yml
-# Installs kubeadm + kubelet, runs kubeadm init, deploys Flannel CNI, labels GPU node.
-# ~5 min
+Note the outputs — you'll need `gpu_node_public_ip` for the next steps.
 
 ```
+gpu_node_public_ip = "x.x.x.x"
+ssh_command        = "ssh -i ~/.ssh/id_rsa ubuntu@x.x.x.x"
+grafana_url        = "http://x.x.x.x:30300"
+```
+
+#### ⚠️ GPU vCPU limit error on new AWS accounts
+
+New AWS accounts start with 0 GPU vCPUs. If you see:
+> `VcpuLimitExceeded: You have requested more vCPU capacity than your current vCPU limit of 0`
+
+Request an increase:
+- AWS Console → Service Quotas → EC2 → search **"Running On-Demand G and VT instances"**
+- Request **4 vCPUs** minimum → Submit (approved in a few hours to 1 business day)
+
+While waiting, test with a non-GPU instance by setting in `terraform.tfvars`:
+```hcl
+instance_type     = "t3.medium"
+use_spot_instance = false
+```
+
+#### ⚠️ CloudWatch log group already exists error
+
+If a previous failed apply left an orphaned log group:
+```cmd
+terraform import module.vpc.aws_cloudwatch_log_group.flow_logs[0] /aws/vpc/superpod-flow-logs
+terraform apply
+```
+
+---
+
+### 2. ✅ Verify Node (Windows CMD)
+
+```cmd
+ssh -i "%USERPROFILE%\.ssh\id_rsa" ubuntu@<NODE_IP>
+```
+
+Watch cloud-init progress (runs automatically on first boot, ~5 min):
+```bash
+sudo tail -f /var/log/cloud-init-output.log
+```
+
+cloud-init installs: NVIDIA Driver 535, CUDA 12-3, Docker, NVIDIA Container Toolkit, kubectl, Helm, DCGM. No manual driver steps required.
+
+---
+
+### 3. 🥾 Bootstrap Kubernetes (Ansible — run from WSL2)
+
+> All Ansible commands run inside WSL2, not Windows CMD.
+
+Update [ansible/inventory/hosts.yml](./ansible/inventory/hosts.yml) with your node IP:
+
+```yaml
+ansible_host: "x.x.x.x"                              # ← gpu_node_public_ip from terraform output
+ansible_ssh_private_key_file: ~/.ssh/id_rsa_superpod  # ← WSL2 copy of your Windows SSH key
+```
+
+Run from WSL2:
+
+```bash
+# Verify Ansible can reach the node
+ansible gpu_nodes \
+  -i /path/to/ansible/inventory/hosts.yml \
+  -m ping
+
+# Bootstrap Kubernetes
+ansible-playbook \
+  -i /path/to/ansible/inventory/hosts.yml \
+  /path/to/ansible/playbooks/01-bootstrap-k8s.yml
+```
+
+Expected result: node shows `Ready` status.
+
+```
+NAME           STATUS   ROLES           AGE   VERSION
+ip-10-0-1-x   Ready    control-plane   71s   v1.29.15
+```
+
+<details>
+
+<summary>Output Result</summary>
+
+
+      hitesh@Artyom:/mnt/c/Users/sagar$ kubectl get pods -n monitoring
+      NAME                                                   READY   STATUS    RESTARTS   AGE
+      prometheus-grafana-67d49c8d9c-hpfxq                    3/3     Running   0          7m24s
+      prometheus-kube-prometheus-operator-7ff545b6fb-p5qgb   1/1     Running   0          7m24s
+      prometheus-kube-state-metrics-6cc7c56db5-dd4w4         1/1     Running   0          7m24s
+      prometheus-prometheus-node-exporter-b86pv              1/1     Running   0          7m24s
+
+</details>
+
 
 ### 3. 🚀 Deploy the full stack (Ansible)
 
@@ -448,7 +400,34 @@ ansible-playbook playbooks/01-bootstrap-k8s.yml
 ansible-playbook playbooks/02-deploy-stack.yml
 # ~12 min — waits for each Helm release before proceeding
 
+
+ helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring  -f /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/kubernetes/monitoring/prometheus/values.yaml   --wait --timeout=10m
+
 ```
+
+
+<details>
+
+<summary>Output Result</summary>
+
+      hitesh@Artyom:/mnt/c/Users/sagar$ kubectl get pods -n monitoring
+      NAME                                                   READY   STATUS    RESTARTS   AGE
+      prometheus-grafana-67d49c8d9c-hpfxq                    3/3     Running   0          7m24s
+      prometheus-kube-prometheus-operator-7ff545b6fb-p5qgb   1/1     Running   0          7m24s
+      prometheus-kube-state-metrics-6cc7c56db5-dd4w4         1/1     Running   0          7m24s
+      prometheus-prometheus-node-exporter-b86pv              1/1     Running   0          7m24s
+
+</details>
+
+
+All pods are Running. Access Grafana via port-forward:
+
+> kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
+
+Then open in your browser:
+[http://localhost:3000](http://localhost:3000)
+
+Login: admin / superpod-changeme
 
 ###  If you prefer manually
 
@@ -570,19 +549,18 @@ terraform destroy
 
 ```
 
-
 ---
 
 ## 📊 Key Metrics Monitored
 
-| Metric                               | Description                  |
-|--------------------------------------|------------------------------|
-| `DCGM_FI_DEV_GPU_UTIL`               | GPU compute utilization %    |
-| `DCGM_FI_DEV_MEM_COPY_UTIL`          | Memory bandwidth utilization |
-| `DCGM_FI_DEV_FB_USED`                | GPU framebuffer memory used  |
-| `DCGM_FI_DEV_POWER_USAGE`            | Power draw per GPU           |
-| `DCGM_FI_DEV_SM_CLOCK`               | SM clock frequency           |
-| `DCGM_FI_DEV_GPU_TEMP`               | GPU temperature              |
+| Metric                          | Description                                    |
+|---------------------------------|------------------------------------------------|
+| `DCGM_FI_DEV_GPU_UTIL`          | GPU compute utilization %                      |
+| `DCGM_FI_DEV_MEM_COPY_UTIL`     | Memory bandwidth utilization                   |
+| `DCGM_FI_DEV_FB_USED`           | GPU framebuffer memory used                    |
+| `DCGM_FI_DEV_POWER_USAGE`       | Power draw per GPU                             |
+| `DCGM_FI_DEV_SM_CLOCK`          | SM clock frequency                             |
+| `DCGM_FI_DEV_GPU_TEMP`          | GPU temperature                                |
 | `DCGM_FI_DEV_ECC_SBE_VOL_TOTAL` | Single-bit ECC errors (early hardware warning) |
 
 ---

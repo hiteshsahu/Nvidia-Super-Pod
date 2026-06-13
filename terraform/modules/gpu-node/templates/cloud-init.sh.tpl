@@ -21,8 +21,8 @@ echo "[2/6] CUDA Toolkit ${cuda_version}..."
 wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
 dpkg -i cuda-keyring_1.1-1_all.deb
 apt-get update -y && apt-get install -y cuda-toolkit-${cuda_version}
-echo 'export PATH=/usr/local/cuda/bin:$PATH' >> /etc/environment
-echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> /etc/environment
+echo 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin' >> /etc/environment
+echo 'LD_LIBRARY_PATH=/usr/local/cuda/lib64' >> /etc/environment
 
 echo "[3/6] Docker + NVIDIA Container Toolkit..."
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker.gpg

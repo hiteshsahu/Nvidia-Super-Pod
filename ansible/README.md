@@ -198,7 +198,7 @@ flowchart TD
         CI2[Install CUDA Toolkit 12-3]
         CI3[Install Docker +\nNVIDIA Container Toolkit]
         CI4[Install kubectl + Helm]
-        CI5[Build CUDA samples\ndeviceQuery · bandwidthTest]
+        CI5["Build CUDA samples\ndeviceQuery · bandwidthTest"]
         CI6[Install DCGM daemon]
         CI7[Format + mount\nEBS data volume]
         CI1 --> CI2 --> CI3 --> CI4 --> CI5 --> CI6 --> CI7

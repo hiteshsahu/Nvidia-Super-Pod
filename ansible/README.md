@@ -208,7 +208,7 @@ flowchart TD
         P1A[Wait for cloud-init\nstatus --wait]
         P1B[Install kubeadm + kubelet]
         P1C[kubeadm init\npod-network-cidr=10.244.0.0/16]
-        P1D[Write kubeconfig\n~/.kube/config]
+        P1D["Write kubeconfig\n~/.kube/config"]
         P1E[Deploy Flannel CNI]
         P1F[Remove control-plane taint]
         P1G[Label node\nnvidia.com/gpu.present=true]

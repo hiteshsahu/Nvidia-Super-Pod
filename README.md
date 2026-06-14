@@ -107,16 +107,16 @@ nvidia-superpod/
 │   │   └── values.yaml            # GPU Operator Helm values (driver.enabled=false)
 │   ├── dcgm-exporter/
 │   │   └── values.yaml            # DCGM Exporter Helm values + ServiceMonitor
-│   ├── workloads/
-│   │   ├── cuda-test.yaml         # Job: nvidia-smi, deviceQuery, bandwidthTest
-│   │   ├── pytorch-job.yaml       # Job: ResNet-50 throughput benchmark
-│   │   └── triton.yaml            # Deployment + Service + ServiceMonitor
 │   └── monitoring/
 │       ├── prometheus/
 │       │   └── values.yaml        # kube-prometheus-stack Helm values
 │       └── grafana/
 │           └── dashboards/
 │               └── gpu-cluster.json  # 11-panel GPU metrics dashboard
+├── workloads/                      # Optional — apply after core stack is healthy
+│   ├── cuda-test.yaml             # Job: nvidia-smi, deviceQuery, bandwidthTest
+│   ├── pytorch-job.yaml           # Job: ResNet-50 throughput benchmark
+│   └── triton.yaml                # Deployment + Service + ServiceMonitor
 ├── runbooks/
 │   ├── 01-driver-install.md       # Manual driver install & validation
 │   ├── 02-cuda-setup.md           # CUDA 12-3 setup & cuDNN
@@ -475,7 +475,7 @@ kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
 # Expected: 1
 
 # CUDA validation job
-kubectl apply -f kubernetes/workloads/cuda-test.yaml
+kubectl apply -f workloads/cuda/cuda-test.yaml
 kubectl wait job/cuda-validation -n training --for=condition=complete --timeout=5m
 kubectl logs -n training job/cuda-validation
 # Expected last line: All GPU validation checks PASSED.
@@ -580,7 +580,7 @@ watch -n 1 nvidia-smi \
   --format=csv,noheader,nounits
 
 # Run the PyTorch ResNet-50 benchmark and tail results
-kubectl apply -f kubernetes/workloads/pytorch-job.yaml
+kubectl apply -f workloads/pytorch/pytorch-job.yaml
 kubectl logs -n training job/pytorch-benchmark -f
 ```
 

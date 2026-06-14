@@ -113,7 +113,7 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 
 **7. Adjust VRAM and alert thresholds for GTX 4060**
 
-In `kubernetes/workloads/pytorch-job.yaml`:
+In `workloads/pytorch/pytorch-job.yaml`:
 
 ```python
 BATCH = 32          # reduced from 64 for 8 GB VRAM

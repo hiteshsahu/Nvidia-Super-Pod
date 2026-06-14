@@ -45,16 +45,17 @@ kubernetes/
 │   └── values.yaml              # NVIDIA GPU Operator Helm values
 ├── dcgm-exporter/
 │   └── values.yaml              # DCGM Exporter Helm values
-├── monitoring/
-│   ├── prometheus/
-│   │   └── values.yaml          # kube-prometheus-stack Helm values
-│   └── grafana/
-│       └── dashboards/
-│           └── gpu-cluster.json # 11-panel GPU metrics dashboard
-└── workloads/
-    ├── cuda-test.yaml           # Job: GPU validation
-    ├── pytorch-job.yaml         # Job: ResNet-50 benchmark
-    └── triton.yaml              # Deployment + Service + ServiceMonitor
+└── monitoring/
+    ├── prometheus/
+    │   └── values.yaml          # kube-prometheus-stack Helm values
+    └── grafana/
+        └── dashboards/
+            └── gpu-cluster.json # 11-panel GPU metrics dashboard
+
+workloads/                        # Optional — apply after core stack is healthy
+├── cuda-test.yaml               # Job: GPU validation (nvidia-smi, deviceQuery, bandwidthTest)
+├── pytorch-job.yaml             # Job: ResNet-50 throughput benchmark
+└── triton.yaml                  # Deployment + Service + ServiceMonitor
 ```
 
 ---
@@ -209,16 +210,16 @@ To import the GPU dashboard:
 
 ```bash
 # CUDA validation (run first — aborts if GPU is broken)
-kubectl apply -f kubernetes/workloads/cuda-test.yaml
+kubectl apply -f workloads/cuda/cuda-test.yaml
 kubectl wait job/cuda-validation -n training --for=condition=complete --timeout=5m
 kubectl logs -n training job/cuda-validation
 
 # Triton Inference Server
-kubectl apply -f kubernetes/workloads/triton.yaml
+kubectl apply -f workloads/triton/triton.yaml
 kubectl rollout status deployment/triton -n inference
 
 # PyTorch benchmark (optional)
-kubectl apply -f kubernetes/workloads/pytorch-job.yaml
+kubectl apply -f workloads/pytorch/pytorch-job.yaml
 kubectl logs -n training job/pytorch-benchmark -f
 ```
 

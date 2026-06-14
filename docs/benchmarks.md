@@ -16,7 +16,7 @@ T4 peak memory bandwidth spec is 300 GB/s (GDDR6). The D2D result of ~255 GB/s (
 
 **Run:**
 ```bash
-kubectl apply -f kubernetes/workloads/cuda-test.yaml
+kubectl apply -f workloads/cuda/cuda-test.yaml
 kubectl logs -n training job/cuda-validation | grep -A5 "Bandwidth Test"
 ```
 
@@ -37,7 +37,7 @@ Workload: ResNet-50 forward + backward pass, batch size 64, float32, CUDA 12.3, 
 
 **Run:**
 ```bash
-kubectl apply -f kubernetes/workloads/pytorch-job.yaml
+kubectl apply -f workloads/pytorch/pytorch-job.yaml
 kubectl logs -n training job/pytorch-benchmark -f
 ```
 

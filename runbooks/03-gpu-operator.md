@@ -86,7 +86,7 @@ kubectl get node -o json | jq '.items[].metadata.labels | with_entries(select(.k
 ### 8. Run the CUDA validation job
 
 ```bash
-kubectl apply -f kubernetes/workloads/cuda-test.yaml
+kubectl apply -f workloads/cuda/cuda-test.yaml
 kubectl wait --for=condition=complete job/cuda-validation -n training --timeout=5m
 kubectl logs -n training job/cuda-validation
 # Expected last line: All GPU validation checks PASSED.

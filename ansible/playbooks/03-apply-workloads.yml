@@ -31,7 +31,7 @@
     - name: Apply CUDA validation job
       command: >
         kubectl apply -f
-        /home/ubuntu/kubernetes/workloads/cuda-test.yaml
+        /home/ubuntu/workloads/cuda/cuda-test.yaml
       register: cuda_apply
       changed_when: "'created' in cuda_apply.stdout"
 
@@ -72,7 +72,7 @@
     - name: Apply Triton Inference Server
       command: >
         kubectl apply -f
-        /home/ubuntu/kubernetes/workloads/triton.yaml
+        /home/ubuntu/workloads/triton/triton.yaml
       register: triton_apply
       changed_when: >
         'created' in triton_apply.stdout or
@@ -112,7 +112,7 @@
       tags: pytorch
       command: >
         kubectl apply -f
-        /home/ubuntu/kubernetes/workloads/pytorch-job.yaml
+        /home/ubuntu/workloads/pytorch/pytorch-job.yaml
       register: pytorch_apply
       changed_when: "'created' in pytorch_apply.stdout"
 

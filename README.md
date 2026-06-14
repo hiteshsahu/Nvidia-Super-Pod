@@ -6,7 +6,7 @@ Built on AWS using Terraform, Ansible, Cloud-Init, and Kubernetes.
 - GPU monitoring, alerting, and AI workload execution for PyTorch and LLM inference workloads.
 
 
-![](./img/cover.png)
+![](./img/cover.jpg)
 
 ---
 

@@ -139,7 +139,7 @@ flowchart TB
     style BROWSER fill:#FFFFFF,stroke:#879196
 ```
 
-![](../img/grafana.JPG)
+![](../img/grafana.jpg)
 ---
 
 ## Networking

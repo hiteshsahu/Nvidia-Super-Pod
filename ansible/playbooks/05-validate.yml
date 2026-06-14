@@ -177,16 +177,8 @@
 
     - name: Print validation summary
       debug:
-        msg: |
-          ╔══════════════════════════════════════════════════════╗
-          ║         NVIDIA SuperPod — Validation Summary         ║
-          ╠══════════════════════════════════════════════════════╣
-          {% for c in checks %}
-          ║  {{ '[' + c.result + ']' | ljust(6) }}  {{ c.check | ljust(38) }}  ║
-          ║         {{ c.detail | truncate(48, True) | ljust(48) }}  ║
-          ╠══════════════════════════════════════════════════════╣
-          {% endfor %}
-          ╚══════════════════════════════════════════════════════╝
+        msg: "{{ item.result }} | {{ item.check }} | {{ item.detail | truncate(60, True) }}"
+      loop: "{{ checks }}"
 
     - name: Fail playbook if any check failed
       assert:

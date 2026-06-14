@@ -76,6 +76,50 @@ If `DCGM_FI_DEV_GPU_UTIL` is low but the job is running, the GPU is waiting for 
 
 ---
 
+## Windows Deployment (WSL2)
+
+**Ansible must be installed via pip, not apt**
+
+`sudo apt install ansible` on Ubuntu 22.04 gives version 2.10.8, which is too old — the remote tmp directory command uses backtick syntax that fails with exit code 127. Install via `pip3 install --user ansible` to get 2.17+ and add `~/.local/bin` to PATH.
+
+**Windows SSH keys have 0777 permissions in WSL2**
+
+SSH keys generated on Windows and accessed via `/mnt/c/Users/...` in WSL2 have world-readable permissions (0777). SSH rejects these with "UNPROTECTED PRIVATE KEY FILE". Always copy the key into WSL2 and `chmod 600` it: `cp /mnt/c/Users/<user>/.ssh/id_rsa ~/.ssh/id_rsa_superpod && chmod 600 ~/.ssh/id_rsa_superpod`.
+
+**EBS data volume attaches as `nvme1n1`, not `/dev/sdf`**
+
+On Nitro-based EC2 instances (all modern instance types including t3, g4dn), EBS volumes attach as NVMe devices (`/dev/nvme1n1`) regardless of the device name specified in Terraform (`/dev/xvdf` or `/dev/sdf`). The cloud-init template originally waited for `/dev/sdf` which never appeared. Fix: use `/dev/nvme1n1` in the cloud-init template.
+
+**`/etc/environment` does not support shell variable expansion**
+
+cloud-init appended `export PATH=/usr/local/cuda/bin:$PATH` to `/etc/environment`. Unlike `.bashrc`, `/etc/environment` is parsed by PAM — it does not expand `$PATH`. The result was a literal PATH of `/usr/local/cuda/bin:$PATH` which broke every command in non-interactive SSH sessions (including all Ansible tasks). Fix: write the full absolute PATH without variable references.
+
+**containerd ships with a disabled CRI plugin by default on Ubuntu**
+
+The default `/etc/containerd/config.toml` installed by apt has the CRI plugin disabled (`disabled_plugins = ["cri"]`). kubeadm's preflight check catches this and aborts. Fix before running kubeadm: `sudo rm /etc/containerd/config.toml && sudo containerd config default | sudo tee /etc/containerd/config.toml && sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml && sudo systemctl restart containerd`.
+
+**`br_netfilter` kernel module must be loaded before kubeadm init**
+
+kubeadm requires `/proc/sys/net/bridge/bridge-nf-call-iptables` to exist. This file is only present when the `br_netfilter` kernel module is loaded. On a fresh Ubuntu 22.04 node it is not loaded by default. Load it with `sudo modprobe br_netfilter` and persist it via `/etc/modules-load.d/br_netfilter.conf`.
+
+**Ansible `playbook_dir` resolves to the local controller path, not the remote node**
+
+When Ansible runs `kubectl apply -f {{ playbook_dir }}/../../kubernetes/...`, `playbook_dir` expands to the path on the controller machine (e.g. `/mnt/e/WorkSpace/...`). kubectl runs on the remote node where that path doesn't exist. Fix: use the `copy` module to sync manifests to the remote node first, then reference the remote path (e.g. `/home/ubuntu/kubernetes/`).
+
+**DCGM Exporter moved out of the NVIDIA Helm repo**
+
+The `nvidia/dcgm-exporter` chart no longer exists in `https://helm.ngc.nvidia.com/nvidia`. It moved to a dedicated repo. Add: `helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts`. Latest version as of 2026-06: `4.8.2`.
+
+**New AWS accounts have 0 GPU vCPU quota**
+
+New AWS accounts cannot launch GPU instances (`g4dn`, `p3`, `p4d`) until a service quota increase is approved for "Running On-Demand G and VT instances". Request at least 4 vCPUs. AWS may reject the first request — resubmit with a detailed use case. Use `t3.medium` in the meantime to validate the full Terraform + Ansible + Kubernetes pipeline end to end.
+
+**CloudWatch log group persists after `terraform destroy`**
+
+The VPC flow logs CloudWatch log group (`/aws/vpc/superpod-flow-logs`) is not destroyed by `terraform destroy` when the state is lost or partially applied. On the next `terraform apply` it fails with `ResourceAlreadyExistsException`. Fix: `terraform import module.vpc.aws_cloudwatch_log_group.flow_logs[0] /aws/vpc/superpod-flow-logs` then re-apply.
+
+---
+
 ## Cost
 
 **Spot interruptions are infrequent but must be handled**

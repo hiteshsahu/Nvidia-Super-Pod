@@ -24,11 +24,24 @@
 
   tasks:
 
+    - name: Copy kubernetes manifests to remote node
+      copy:
+        src: "{{ playbook_dir }}/../../kubernetes/"
+        dest: /home/ubuntu/kubernetes/
+        mode: "0644"
+
+    - name: Copy workload manifests to remote node
+      copy:
+        src: "{{ playbook_dir }}/../../workloads/"
+        dest: /home/ubuntu/workloads/
+        mode: "0644"
+
     # ------------------------------------------------------------------ #
     # CUDA validation job                                                  #
     # ------------------------------------------------------------------ #
 
     - name: Apply CUDA validation job
+      tags: cuda
       command: >
         kubectl apply -f
         /home/ubuntu/workloads/cuda/cuda-test.yaml
@@ -36,6 +49,7 @@
       changed_when: "'created' in cuda_apply.stdout"
 
     - name: Wait for CUDA validation to complete (5 min max)
+      tags: cuda
       command: >
         kubectl wait job/cuda-validation -n training
         --for=condition=complete --timeout=5m
@@ -43,11 +57,13 @@
       changed_when: false
 
     - name: Fetch CUDA validation logs
+      tags: cuda
       command: kubectl logs -n training job/cuda-validation
       register: cuda_logs
       changed_when: false
 
     - name: Assert CUDA validation passed
+      tags: cuda
       assert:
         that: "'All GPU validation checks PASSED' in cuda_logs.stdout"
         fail_msg: |
@@ -56,10 +72,12 @@
         success_msg: "CUDA validation PASSED."
 
     - name: Print CUDA validation output
+      tags: cuda
       debug:
         msg: "{{ cuda_logs.stdout_lines }}"
 
     - name: Clean up CUDA validation job
+      tags: cuda
       command: kubectl delete job cuda-validation -n training
       register: cleanup
       changed_when: cleanup.rc == 0

@@ -153,19 +153,19 @@ Required tools
 ### Install Tools macOS
 
 ```bash
-
-brew install terraform ansible kubectl helm awscli
-
-# Python deps for Ansible dynamic inventory
-pip install boto3 botocore
-ansible-galaxy collection install amazon.aws kubernetes.core
-
-
-# Verify
-terraform version   # >= 1.5
-ansible --version   # >= 2.14
-helm version        # >= 3.12
-aws configure       # set your Access Key, Secret, region: eu-central-1
+    
+    brew install terraform ansible kubectl helm awscli
+    
+    # Python deps for Ansible dynamic inventory
+    pip install boto3 botocore
+    ansible-galaxy collection install amazon.aws kubernetes.core
+    
+    
+    # Verify
+    terraform version   # >= 1.5
+    ansible --version   # >= 2.14
+    helm version        # >= 3.12
+    aws configure       # set your Access Key, Secret, region: eu-central-1
 
 ```
 
@@ -180,8 +180,8 @@ aws configure       # set your Access Key, Secret, region: eu-central-1
 Download and run the MSI: `https://awscli.amazonaws.com/AWSCLIV2.msi`
 
 ```cmd
-# Verify
-aws --version   # aws-cli/2.x
+    # Verify
+    aws --version   # aws-cli/2.x
 ```
 
 **2. Terraform (Windows)**
@@ -190,33 +190,33 @@ Download the zip from `https://developer.hashicorp.com/terraform/install` → Wi
 Extract `terraform.exe` to `C:\terraform\` then add to PATH:
 
 ```powershell
-# Run as Administrator
-[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\terraform", "Machine")
+    # Run as Administrator
+    [Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\terraform", "Machine")
 ```
 
 Restart your terminal, then verify:
 ```cmd
-terraform version   # >= 1.5
+    terraform version   # >= 1.5
 ```
 
 **3. SSH Key (Windows CMD)**
 
 ```cmd
-mkdir "%USERPROFILE%\.ssh"
-ssh-keygen -t rsa -b 4096 -f "%USERPROFILE%\.ssh\id_rsa"
-
-# View and copy your public key
-type "%USERPROFILE%\.ssh\id_rsa.pub"
+    mkdir "%USERPROFILE%\.ssh"
+    ssh-keygen -t rsa -b 4096 -f "%USERPROFILE%\.ssh\id_rsa"
+    
+    # View and copy your public key
+    type "%USERPROFILE%\.ssh\id_rsa.pub"
 ```
 
 **4. AWS Credentials (Windows CMD)**
 
 ```cmd
-aws configure
-# Enter: Access Key ID, Secret Access Key, region (eu-central-1), output (json)
-
-# Verify
-aws sts get-caller-identity
+    aws configure
+    # Enter: Access Key ID, Secret Access Key, region (eu-central-1), output (json)
+    
+    # Verify
+    aws sts get-caller-identity
 ```
 
 **5. Ansible + Helm + kubectl (WSL2 Ubuntu)**
@@ -224,19 +224,19 @@ aws sts get-caller-identity
 Ansible is Linux-only. Open WSL2 (`wsl` from Start menu) and run:
 
 ```bash
-# Remove old apt ansible (too old — must be >= 2.14)
-sudo apt remove ansible -y
-pip3 install --user ansible
-echo ‘export PATH="$PATH:$HOME/.local/bin"’ >> ~/.bashrc
-source ~/.bashrc
-ansible --version   # ansible core 2.17+
-
-# kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
-# helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    # Remove old apt ansible (too old — must be >= 2.14)
+    sudo apt remove ansible -y
+    pip3 install --user ansible
+    echo ‘export PATH="$PATH:$HOME/.local/bin"’ >> ~/.bashrc
+    source ~/.bashrc
+    ansible --version   # ansible core 2.17+
+    
+    # kubectl
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    
+    # helm
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
 **6. Copy SSH key into WSL2 with correct permissions**
@@ -244,16 +244,16 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 Windows SSH keys have 0777 permissions which SSH rejects inside WSL2. Copy and fix:
 
 ```bash
-mkdir -p ~/.ssh
-cp /mnt/c/Users/<your-windows-username>/.ssh/id_rsa ~/.ssh/id_rsa_superpod
-chmod 600 ~/.ssh/id_rsa_superpod
+    mkdir -p ~/.ssh
+    cp /mnt/c/Users/<your-windows-username>/.ssh/id_rsa ~/.ssh/id_rsa_superpod
+    chmod 600 ~/.ssh/id_rsa_superpod
 ```
 
 **7. Point kubectl at Docker Desktop cluster (if using local Kubernetes)**
 
 ```bash
-export KUBECONFIG=/mnt/c/Users/<your-windows-username>/.kube/config
-echo ‘export KUBECONFIG=/mnt/c/Users/<your-windows-username>/.kube/config’ >> ~/.bashrc
+    export KUBECONFIG=/mnt/c/Users/<your-windows-username>/.kube/config
+    echo ‘export KUBECONFIG=/mnt/c/Users/<your-windows-username>/.kube/config’ >> ~/.bashrc
 ```
 
 
@@ -281,29 +281,54 @@ Cost for one session: 28 min × $0.18/hr ≈ $0.08
 **Run from Windows CMD:**
 
 ```cmd
-cd /d e:\WorkSpace\GitHub\Nvidia-Super-Pod\terraform
-cp terraform.tfvars.example terraform.tfvars
+    cd /d e:\WorkSpace\GitHub\Nvidia-Super-Pod\terraform
+    cp terraform.tfvars.example terraform.tfvars
 ```
 
 Edit `terraform.tfvars` with your values:
 
 ```hcl
-ssh_public_key    = "ssh-rsa AAAA..."      # ← output of: type "%USERPROFILE%\.ssh\id_rsa.pub"
-allowed_ssh_cidrs = ["YOUR.IP/32"]         # ← output of: curl https://checkip.amazonaws.com
+    ssh_public_key    = "ssh-rsa AAAA..."      # ← output of: type "%USERPROFILE%\.ssh\id_rsa.pub"
+    allowed_ssh_cidrs = ["YOUR.IP/32"]         # ← output of: curl https://checkip.amazonaws.com
 ```
 
 ```cmd
-terraform init
-terraform plan
-terraform apply -auto-approve
+    terraform init
+    terraform plan
+    terraform apply -auto-approve
 ```
+
+
+<details>
+
+<summary>Output Result</summary>
+
+```bash
+    Apply complete! Resources: 34 added, 1 changed, 0 destroyed.
+    
+    Outputs:
+    
+    ami_id = "ami-0c42a2b384b315690"
+    availability_zone = "eu-central-1a"
+    dcgm_metrics_url = "http://3.123.156.112:9400/metrics"
+    gpu_node_instance_id = "i-06d7dda5074fc071c"
+    gpu_node_public_ip = "3.123.156.112"
+    grafana_url = "http://3.123.156.112:3000"
+    instance_type = "t3.medium"
+    prometheus_url = "http://3.123.156.112:9090"
+    ssh_command = "ssh -i ~/.ssh/id_rsa ubuntu@3.123.156.112"
+    validate_gpu_command = "nvidia-smi && nvcc --version && ./scripts/validate-gpu.sh"
+    vpc_id = "vpc-0a194128b7cd91074"
+    
+```    
+</details>
 
 Note the outputs — you'll need `gpu_node_public_ip` for the next steps.
 
-```
-gpu_node_public_ip = "x.x.x.x"
-ssh_command        = "ssh -i ~/.ssh/id_rsa ubuntu@x.x.x.x"
-grafana_url        = "http://x.x.x.x:30300"
+```bash
+    gpu_node_public_ip = "x.x.x.x"
+    ssh_command        = "ssh -i ~/.ssh/id_rsa ubuntu@x.x.x.x"
+    grafana_url        = "http://x.x.x.x:30300"
 ```
 
 #### ⚠️ GPU vCPU limit error on new AWS accounts
@@ -316,34 +341,40 @@ Request an increase:
 - Request **4 vCPUs** minimum → Submit (approved in a few hours to 1 business day)
 
 While waiting, test with a non-GPU instance by setting in `terraform.tfvars`:
+
 ```hcl
-instance_type     = "t3.medium"
-use_spot_instance = false
+    instance_type     = "t3.medium"
+    use_spot_instance = false
 ```
 
 #### ⚠️ CloudWatch log group already exists error
 
 If a previous failed apply left an orphaned log group:
 ```cmd
-terraform import module.vpc.aws_cloudwatch_log_group.flow_logs[0] /aws/vpc/superpod-flow-logs
-terraform apply
+    terraform import module.vpc.aws_cloudwatch_log_group.flow_logs[0] /aws/vpc/superpod-flow-logs
+    terraform apply
 ```
+
 
 ---
 
-### 2. ✅ Verify Node (Windows CMD)
+### 2. ⏳ Wait for `cloud-init ` (Windows CMD)
+
+SSH into deployed EC2 Node using `gpu_node_public_ip`:
 
 ```cmd
-ssh -i "%USERPROFILE%\.ssh\id_rsa" ubuntu@<NODE_IP>
+    ssh -i "%USERPROFILE%\.ssh\id_rsa" ubuntu@<NODE_IP>
 ```
 
-Watch cloud-init progress (runs automatically on first boot, ~5 min):
+Watch `cloud-init` progress (runs automatically on first boot, ~5 min):
 
 ```bash
-sudo tail -f /var/log/cloud-init-output.log
+  sudo tail -f /var/log/cloud-init-output.log
 ```
 
-cloud-init installs: NVIDIA Driver 535, CUDA 12-3, Docker, NVIDIA Container Toolkit, kubectl, Helm, DCGM. No manual driver steps required.
+cloud-init installs: `NVIDIA Driver 535`, `CUDA 12-3`, `Docker`, `NVIDIA Container Toolkit`, `kubectl`, `Helm`, `DCGM`. 
+
+No manual driver steps required.
 
 ---
 
@@ -354,22 +385,38 @@ cloud-init installs: NVIDIA Driver 535, CUDA 12-3, Docker, NVIDIA Container Tool
 Update [ansible/inventory/hosts.yml](./ansible/inventory/hosts.yml) with your node IP:
 
 ```yaml
-ansible_host: "x.x.x.x"                              # ← gpu_node_public_ip from terraform output
-ansible_ssh_private_key_file: ~/.ssh/id_rsa_superpod  # ← WSL2 copy of your Windows SSH key
+    ansible_host: "x.x.x.x"                              # ← gpu_node_public_ip from terraform output
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa_superpod  # ← WSL2 copy of your Windows SSH key
 ```
 
-Run from WSL2:
+### All at Once in case of Disaster recovery (Run from WSL2) 
 
 ```bash
-# Verify Ansible can reach the node
-ansible gpu_nodes \
-  -i /path/to/ansible/inventory/hosts.yml \
-  -m ping
 
-# Bootstrap Kubernetes
-ansible-playbook \
-  -i /path/to/ansible/inventory/hosts.yml \
-  /path/to/ansible/playbooks/01-bootstrap-k8s.yml
+    sleep 20 && \
+    ssh -i ~/.ssh/id_rsa_superpod ubuntu@3.123.156.112 "sudo sed -i '/^export PATH/d' /etc/environment && sudo sed -i '/^export LD_LIBRARY/d' /etc/environment && sudo rm -f /etc/containerd/config.toml && sudo containerd config default | sudo tee /etc/containerd/config.toml && sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml && sudo systemctl restart containerd && sudo modprobe br_netfilter && echo br_netfilter | sudo tee /etc/modules-load.d/br_netfilter.conf && sudo sysctl -w net.bridge.bridge-nf-call-iptables=1 && echo ALL_FIXES_DONE" && \
+    ansible-playbook -i /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/inventory/hosts.yml /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/playbooks/01-bootstrap-k8s.yml && \
+    ansible-playbook -i /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/inventory/hosts.yml /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/playbooks/02-deploy-stack.yml
+
+
+```
+
+Or do it gradually first:
+
+### 3.1. ☸️ Deploy the Kubernetes (Ansible) 
+
+```bash
+
+    # Verify Ansible can reach the node
+    ansible gpu_nodes \
+      -i /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/inventory/hosts.yml \
+      -m ping
+    
+    # Bootstrap Kubernetes
+    ansible-playbook \
+      -i /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/inventory/hosts.yml \
+      /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/playbooks/01-bootstrap-k8s.yml
+      
 ```
 
 Expected result: node shows `Ready` status.
@@ -383,7 +430,6 @@ ip-10-0-1-x   Ready    control-plane   71s   v1.29.15
 
 <summary>Output Result</summary>
 
-
       hitesh@Artyom:/mnt/c/Users/sagar$ kubectl get pods -n monitoring
       NAME                                                   READY   STATUS    RESTARTS   AGE
       prometheus-grafana-67d49c8d9c-hpfxq                    3/3     Running   0          7m24s
@@ -393,21 +439,22 @@ ip-10-0-1-x   Ready    control-plane   71s   v1.29.15
 
 </details>
 
+---
 
-### 3. 🚀 Deploy the full stack (Ansible)
+### 3.2. 🧮 Deploy the full stack (Ansible)
 
-### Deploy GPU Operator via Ansible
+### Deploy GPU Operator + kube-prometheus-stack + DCGM Exporter via Ansible
 
 ```bash
-# Playbook 02: GPU Operator + kube-prometheus-stack + DCGM Exporter
-ansible-playbook playbooks/02-deploy-stack.yml
-# ~12 min — waits for each Helm release before proceeding
 
-
- helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring  -f /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/kubernetes/monitoring/prometheus/values.yaml   --wait --timeout=10m
+    # Playbook 02: GPU Operator + kube-prometheus-stack + DCGM Exporter
+    ansible-playbook playbooks/02-deploy-stack.yml
+    # ~12 min — waits for each Helm release before proceeding
+    
+    
+     helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring  -f /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/kubernetes/monitoring/prometheus/values.yaml   --wait --timeout=10m
 
 ```
-
 
 <details>
 
@@ -423,6 +470,8 @@ ansible-playbook playbooks/02-deploy-stack.yml
 </details>
 
 
+### 4. 📟 Access services
+
 All pods are Running. Access Grafana via port-forward:
 
 > kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
@@ -430,81 +479,10 @@ All pods are Running. Access Grafana via port-forward:
 Then open in your browser:
 [http://localhost:3000](http://localhost:3000)
 
-Login: admin / superpod-changeme
+### Login: admin / superpod-changeme
 
-###  If you prefer manually
+![](./img/grafana.jpg)
 
-```bash
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
-
-# Label the node first (required on single-node clusters)
-kubectl label node $(kubectl get nodes -o jsonpath='{.items[0].metadata.name}') \
-  nvidia.com/gpu.present=true
-
-helm install gpu-operator nvidia/gpu-operator \
-  --namespace gpu-operator \
-  --version v24.3.0 \
-  -f kubernetes/gpu-operator/values.yaml \
-  --wait --timeout=10m
-```
-
-### 5. 🧮 Deploy workloads and validate
-
-### Deploy Workload Jobs
-
-```bash
-# Playbook 03: CUDA validation job (asserted pass) + Triton Inference Server
-ansible-playbook playbooks/03-apply-workloads.yml
-```
-
-### Deploy Workload Tests
-
-
-```bash
-# Playbook 05: 7-check end-to-end health report
-ansible-playbook playbooks/05-validate.yml
-
-```
-
-### If you prefer manually
-
-Verify GPU Resources in Kubernetes
-
-```bash
-kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
-# Expected: 1
-
-# CUDA validation job
-kubectl apply -f workloads/cuda/cuda-test.yaml
-kubectl wait job/cuda-validation -n training --for=condition=complete --timeout=5m
-kubectl logs -n training job/cuda-validation
-# Expected last line: All GPU validation checks PASSED.
-```
-
-### 6. 📊 Deploy Observability Stack
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-# kube-prometheus-stack (Prometheus + Grafana + node-exporter)
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  -f kubernetes/monitoring/prometheus/values.yaml \
-  --wait --timeout=10m
-
-# DCGM Exporter (GPU hardware metrics)
-helm install dcgm-exporter nvidia/dcgm-exporter \
-  --namespace monitoring \
-  --version 3.3.5 \
-  -f kubernetes/dcgm-exporter/values.yaml \
-  --wait
-
-# Grafana is available at http://<node-ip>:30300  (admin / superpod-changeme)
-```
-
-
-### 7. 📟 Access services
 
 Get IP of GPU Node
 
@@ -513,25 +491,115 @@ Get IP of GPU Node
 
 ```bash
 
-# Grafana dashboard
-open http://$NODE_IP:30300
-# Login: admin / superpod-changeme
-
-# Triton health check
-curl http://$NODE_IP:30800/v2/health/ready
-
-# SSH into the node
-ssh -i ~/.ssh/id_rsa ubuntu@$NODE_IP
-nvidia-smi
+    # Grafana dashboard
+    open http://$NODE_IP:30300
+    # Login: admin / superpod-changeme
+    
+    # Triton health check
+    curl http://$NODE_IP:30800/v2/health/ready
+    
+    # SSH into the node
+    ssh -i ~/.ssh/id_rsa ubuntu@$NODE_IP
+    nvidia-smi
 
 ```
 
-Optional — Run GPU benchmarks
+###  If you prefer manually
 
 ```bash
-# PyTorch ResNet-50 throughput benchmark
-ansible-playbook playbooks/03-apply-workloads.yml --tags pytorch
-# Reports ~320 samples/sec on T4
+    helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+    
+    # Label the node first (required on single-node clusters)
+    kubectl label node $(kubectl get nodes -o jsonpath='{.items[0].metadata.name}') \
+      nvidia.com/gpu.present=true
+    
+    #  Add GPU Operator
+    helm install gpu-operator nvidia/gpu-operator \
+      --namespace gpu-operator \
+      --version v24.3.0 \
+      -f kubernetes/gpu-operator/values.yaml \
+      --wait --timeout=10m
+
+    
+    # Add Helm repos
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
+    helm repo update
+
+    # Prometheus + Grafana + node-exporter
+    helm install prometheus prometheus-community/kube-prometheus-stack \
+      --namespace monitoring \
+      -f kubernetes/monitoring/prometheus/values.yaml \
+      --wait --timeout=10m
+
+    # DCGM Exporter (GPU hardware metrics)
+    # Note: chart moved from nvidia/ to gpu-helm-charts/ in 2024
+    helm install dcgm-exporter gpu-helm-charts/dcgm-exporter \
+      --namespace monitoring \
+      --version 4.8.2 \
+      -f kubernetes/dcgm-exporter/values.yaml \
+      --wait
+```
+
+---
+
+### 5. 🚀 Deploy Workloads (From WSL2)
+
+> Requires a GPU node (`g4dn.xlarge` or similar). Skip on `t3.medium`.
+
+```bash
+    ansible-playbook \
+      -i /path/to/ansible/inventory/hosts.yml \
+      /path/to/ansible/playbooks/03-apply-workloads.yml
+    
+    
+     # Example apply-workloads but skipping CUDA 
+     ansible-playbook \
+     /mnt/>   -i /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/inventory/hosts.yml \
+    >   /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/playbooks/03-apply-workloads.yml \
+    >   --skip-tags cuda
+```
+
+
+### 6. 🪂 Validate Deployment (WSL2)
+
+Validate end-to-end health:
+
+```bash
+    
+    ansible-playbook \
+      -i /path/to/ansible/inventory/hosts.yml \
+      /path/to/ansible/playbooks/05-validate.yml
+    
+     # Example 
+    ansible-playbook \
+      -i /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/inventory/hosts.yml \
+      /mnt/e/WorkSpace/GitHub/Nvidia-Super-Pod/ansible/playbooks/05-validate.yml
+    ```
+    
+    Manually verify GPU resources and run CUDA validation:
+    
+    ```bash
+    # Check GPU is allocatable
+    kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
+    # Expected: 1
+    
+    # Run CUDA validation job
+    kubectl apply -f kubernetes/workloads/cuda-test.yaml
+    
+    kubectl wait job/cuda-validation -n training --for=condition=complete --timeout=5m
+    
+    kubectl logs -n training job/cuda-validation
+    # Expected last line: All GPU validation checks PASSED.
+```
+
+
+Optional — Run GPU benchmarks Pytorch
+
+```bash
+    # PyTorch ResNet-50 throughput benchmark
+    ansible-playbook playbooks/03-apply-workloads.yml --tags pytorch
+    # Reports ~320 samples/sec on T4
 
 ```
 
@@ -545,10 +613,10 @@ ansible-playbook playbooks/03-apply-workloads.yml --tags pytorch
 Teardown — stop paying immediately
 
 ```bash
-cd terraform/
-terraform destroy
-# Terminates the EC2 instance, releases EIP, deletes EBS volumes.
-# Cost drops to ~$0 (NAT Gateway and EIP are also destroyed).
+    cd terraform/
+    terraform destroy
+    # Terminates the EC2 instance, releases EIP, deletes EBS volumes.
+    # Cost drops to ~$0 (NAT Gateway and EIP are also destroyed).
 
 ```
 
@@ -571,17 +639,19 @@ terraform destroy
 ## 🔬 Workload Profiling
 
 ```bash
-# Quick utilization snapshot (1-second polling)
-nvidia-smi dmon -s u -d 1
 
-# Continuous GPU stats
-watch -n 1 nvidia-smi \
-  --query-gpu=utilization.gpu,utilization.memory,memory.used,memory.free,temperature.gpu,power.draw \
-  --format=csv,noheader,nounits
-
-# Run the PyTorch ResNet-50 benchmark and tail results
-kubectl apply -f workloads/pytorch/pytorch-job.yaml
-kubectl logs -n training job/pytorch-benchmark -f
+    # Quick utilization snapshot (1-second polling)
+    nvidia-smi dmon -s u -d 1
+    
+    # Continuous GPU stats
+    watch -n 1 nvidia-smi \
+      --query-gpu=utilization.gpu,utilization.memory,memory.used,memory.free,temperature.gpu,power.draw \
+      --format=csv,noheader,nounits
+    
+    # Run the PyTorch ResNet-50 benchmark and tail results
+    kubectl apply -f workloads/pytorch/pytorch-job.yaml
+    kubectl logs -n training job/pytorch-benchmark -f
+    
 ```
 
 ---

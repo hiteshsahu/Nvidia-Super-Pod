@@ -6,7 +6,12 @@ The SuperPod Lab provisions a single GPU node on AWS and wraps it in a full ente
 
 ---
 
+
+
 ## Layer Diagram
+
+
+![](../img/nvidia_superpod_aws_architecture.svg)
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
@@ -16,16 +21,16 @@ The SuperPod Lab provisions a single GPU node on AWS and wraps it in a full ente
 │  │                     VPC (10.0.0.0/16)                       │  │
 │  │                                                             │  │
 │  │  Public Subnets          Private Subnets                    │  │
-│  │  10.0.1.0/24  AZ-a       10.0.10.0/24  AZ-a                │  │
-│  │  10.0.2.0/24  AZ-b       10.0.11.0/24  AZ-b                │  │
+│  │  10.0.1.0/24  AZ-a       10.0.10.0/24  AZ-a                 │  │
+│  │  10.0.2.0/24  AZ-b       10.0.11.0/24  AZ-b                 │  │
 │  │       │                        │                            │  │
 │  │       │  IGW               NAT GW ×2                        │  │
 │  │       │                                                     │  │
 │  │  ┌────▼────────────────────────────────────────────────┐    │  │
-│  │  │           g4dn.xlarge  (Tesla T4, 16 GB VRAM)        │    │  │
-│  │  │                                                      │    │  │
+│  │  │           g4dn.xlarge  (Tesla T4, 16 GB VRAM)       │    │  │
+│  │  │                                                     │    │  │
 │  │  │  ┌──────────────┐  ┌─────────────────────────────┐  │    │  │
-│  │  │  │  Host Layer  │  │      Kubernetes Layer        │  │    │  │
+│  │  │  │  Host Layer  │  │      Kubernetes Layer       │  │    │  │
 │  │  │  │              │  │                             │  │    │  │
 │  │  │  │ nvidia-535   │  │  gpu-operator  (ns)         │  │    │  │
 │  │  │  │ cuda-12.3    │  │  ├─ device-plugin           │  │    │  │
@@ -33,21 +38,21 @@ The SuperPod Lab provisions a single GPU node on AWS and wraps it in a full ente
 │  │  │  │ nvidia-ctk   │  │  └─ validator               │  │    │  │
 │  │  │  │ kubeadm      │  │                             │  │    │  │
 │  │  │  │ DCGM daemon  │  │  monitoring  (ns)           │  │    │  │
-│  │  │  └──────────────┘  │  ├─ dcgm-exporter :9400    │  │    │  │
+│  │  │  └──────────────┘  │  ├─ dcgm-exporter :9400     │  │    │  │
 │  │  │                    │  ├─ prometheus  :9090       │  │    │  │
-│  │  │  ┌──────────────┐  │  └─ grafana    :30300      │  │    │  │
+│  │  │  ┌──────────────┐  │  └─ grafana    :30300       │  │    │  │
 │  │  │  │ EBS gp3      │  │                             │  │    │  │
 │  │  │  │ root 100 GiB │  │  inference  (ns)            │  │    │  │
-│  │  │  │ data 200 GiB │  │  └─ triton   :30800/30801  │  │    │  │
+│  │  │  │ data 200 GiB │  │  └─ triton   :30800/30801   │  │    │  │
 │  │  │  │  /mnt/data   │  │                             │  │    │  │
 │  │  │  └──────────────┘  │  training  (ns)             │  │    │  │
 │  │  │                    │  ├─ cuda-validation (Job)   │  │    │  │
 │  │  │  Elastic IP        │  └─ pytorch-benchmark (Job) │  │    │  │
-│  │  └────────────────────┴─────────────────────────────┘    │  │
+│  │  └────────────────────┴─────────────────────────────┘  │    │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │                                                                   │
 │  CloudWatch: vpc-flow-logs, gpu-util-low, gpu-mem-high,           │
-│              gpu-temp-high alarms                                  │
+│              gpu-temp-high alarms                                 │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -105,22 +110,36 @@ Because drivers and the NVIDIA Container Toolkit are pre-installed by cloud-init
 
 ### Observability Data Flow
 
-```
-T4 Hardware
-    │
-    ▼
-DCGM daemon (host)
-    │ DCGM API
-    ▼
-dcgm-exporter :9400/metrics  (Prometheus format)
-    │ ServiceMonitor CR
-    ▼
-Prometheus (15s scrape)
-    │ PromQL
-    ▼
-Grafana dashboard  ← rendered in browser via NodePort :30300
+```mermaid
+
+flowchart TB
+
+    T4["Tesla T4 GPU"]
+    DCGM["DCGM Daemon<br/>(Host Layer)"]
+    EXPORTER["dcgm-exporter<br/>:9400 /metrics"]
+    SM["ServiceMonitor CR"]
+    PROM["Prometheus<br/>15s Scrape Interval"]
+    GRAF["Grafana Dashboard"]
+    BROWSER["Web Browser<br/>NodePort :30300"]
+
+    T4 -->|GPU Telemetry| DCGM
+    DCGM -->|DCGM API| EXPORTER
+    EXPORTER -->|Metrics Endpoint| SM
+    SM -->|Scrape Configuration| PROM
+    PROM -->|PromQL Queries| GRAF
+    GRAF -->|Rendered Dashboard| BROWSER
+
+    %% AWS documentation style
+    style T4 fill:#FFFFFF,stroke:#FF9900,stroke-width:2px
+    style DCGM fill:#FFFFFF,stroke:#326CE5,stroke-width:2px
+    style EXPORTER fill:#FFFFFF,stroke:#326CE5,stroke-width:2px
+    style SM fill:#FFFFFF,stroke:#326CE5
+    style PROM fill:#FFFFFF,stroke:#326CE5,stroke-width:2px
+    style GRAF fill:#FFFFFF,stroke:#326CE5,stroke-width:2px
+    style BROWSER fill:#FFFFFF,stroke:#879196
 ```
 
+![](../img/grafana.JPG)
 ---
 
 ## Networking
@@ -161,12 +180,12 @@ The EC2 metadata service is configured with `http_tokens = required` (IMDSv2) an
 
 ## Design Decisions
 
-**Single node over cluster** — A single `g4dn.xlarge` keeps cost near zero (Spot ~$0.20/hr) while exercising the full driver → Kubernetes → observability stack. Adding nodes is a variable change.
+Design decisions have been extracted into standalone Architecture Decision Records (ADRs):
 
-**Driver pre-install over GPU Operator driver management** — Cloud-init installs the driver before Kubernetes is bootstrapped. This avoids the chicken-and-egg problem where the GPU Operator cannot schedule pods until the driver is present, but needs the driver to schedule the install pod.
-
-**kube-prometheus-stack over separate installs** — Bundles Prometheus + Grafana + Alertmanager + node-exporter + kube-state-metrics in a single release with pre-wired ServiceMonitor support, reducing Helm release count and config drift.
-
-**EBS gp3 over gp2** — gp3 provides 3,000 IOPS and 125 MB/s baseline at no extra cost vs gp2's 100 IOPS baseline. Both root and data volumes are encrypted at rest.
-
-**Elastic IP over ephemeral public IP** — Spot instances are interrupted and relaunched; an EIP keeps the SSH command and monitoring URLs stable across interruptions.
+| ADR | Decision |
+|-----|----------|
+| [ADR-001](adr/ADR-001-single-node-topology.md) | Single-node topology — one `g4dn.xlarge` exercises the full stack at near-zero Spot cost |
+| [ADR-002](adr/ADR-002-driver-preinstall-cloud-init.md) | Driver pre-install via cloud-init — avoids the GPU Operator bootstrap deadlock and DKMS Secure Boot complications |
+| [ADR-003](adr/ADR-003-kube-prometheus-stack-bundle.md) | kube-prometheus-stack bundle — pre-wires Prometheus, Grafana, Alertmanager, and ServiceMonitor discovery in one release |
+| [ADR-004](adr/ADR-004-ebs-gp3-volumes.md) | EBS gp3 volumes — 3,000 IOPS baseline at gp2 price; both volumes encrypted at rest |
+| [ADR-005](adr/ADR-005-elastic-ip-stable-address.md) | Elastic IP for stable addressing — SSH and NodePort URLs survive Spot interruptions |

@@ -1,4 +1,4 @@
-# Ansible — NVIDIA SuperPod
+# 🎭 Ansible — NVIDIA SuperPod
 
 Ansible handles everything that happens **after** Terraform provisions the node and **cloud-init finishes its first-boot
 setup**. It is the day-1 orchestration layer (Kubernetes bootstrap, Helm deploys) and the day-2 operations layer (driver
@@ -21,7 +21,51 @@ ansible-galaxy collection install amazon.aws kubernetes.core
 
 ---
 
-## Inventory
+
+```mermaid
+
+flowchart TB
+
+    CN["🕹️ Control Node<br/>(Ansible Installed)"]
+
+    INV["📑 Inventory<br/>Hosts & Groups"]
+
+    WEB["🤹‍♂️ Managed Node<br/>web01"]
+    DB["🤹‍♂️ Managed Node<br/>db01"]
+    APP["🤹‍♂️ Managed Node<br/>app01"]
+
+    CN -->|"Reads"| INV
+    INV -->|"Manages"| WEB
+    INV -->|"Manages"| DB
+    INV -->|"Manages"| APP
+
+    classDef control fill:#4CAF50,color:#fff,stroke:#2E7D32
+    classDef inventory fill:#2196F3,color:#fff,stroke:#1565C0
+    classDef managed fill:#FF9800,color:#fff,stroke:#E65100
+
+    class CN control
+    class INV inventory
+    class WEB,DB,APP managed
+```
+
+## 🕹️ Control Node
+> The machine where Ansible is installed and from which automation is executed.
+- You run Ansible commands such as ansible or `ansible-inventory` on a `control node`.
+
+$$ \text{Control Node} = Ansible  + Inventory + Playbook$$ 
+
+
+## 🤹‍♂️ Managed node
+> A remote system, or host, that Ansible controls.
+- Ansible connects to managed nodes and executes tasks on them.
+- Managed nodes do not require Ansible to be installed.
+
+
+## 📑 Inventory
+> A list of `managed nodes` that are logically organized. 
+- You create an inventory on the `control node` to describe host deployments to Ansible.
+
+
 
 Two inventory sources are provided — use whichever fits your setup:
 
@@ -35,9 +79,9 @@ Two inventory sources are provided — use whichever fits your setup:
 ansible-inventory -i inventory/aws_ec2.yml --list
 ```
 
----
+## 📖 Playbooks
+> Playbooks are automation blueprints, in YAML format, that Ansible uses to deploy and configure managed nodes.
 
-## Playbooks
 
 Run these in order for a fresh deployment. Each playbook is idempotent — safe to re-run.
 
@@ -143,9 +187,9 @@ flowchart TD
     DEV([Developer])
 
     subgraph TF["Terraform  (terraform apply)"]
-        TF1[Provision VPC\nSubnets · IGW · NAT GW]
-        TF2[Launch g4dn.xlarge\nEC2 + EBS + EIP + IAM]
-        TF3[Inject cloud-init\nuser-data script]
+        TF1["Provision VPC\nSubnets · IGW · NAT GW"]
+        TF2["Launch g4dn.xlarge\nEC2 + EBS + EIP + IAM"]
+        TF3["Inject cloud-init\nuser-data script"]
         TF1 --> TF2 --> TF3
     end
 

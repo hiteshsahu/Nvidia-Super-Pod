@@ -10,7 +10,7 @@
 #         model.plan   (TensorRT) or model.onnx or model.pt etc.
 #
 # Usage:
-#   kubectl apply -f kubernetes/workloads/triton.yaml
+#   kubectl apply -f workloads/triton/triton.yaml
 #   # Health check:
 #   curl http://<node-ip>:30800/v2/health/ready
 #   # List loaded models:
@@ -155,6 +155,7 @@ spec:
       nodePort: 30802
 
 ---
+
 # Scrape Triton's Prometheus metrics via kube-prometheus-stack.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor

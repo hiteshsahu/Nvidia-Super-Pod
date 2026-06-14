@@ -2,6 +2,7 @@
 # kube-prometheus-stack — Helm Values
 # Chart : prometheus-community/kube-prometheus-stack
 # Docs  : https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+# 📊 : Monitoring Dashboard
 #
 # Install:
 #   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts

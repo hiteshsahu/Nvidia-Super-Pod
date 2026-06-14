@@ -1,5 +1,6 @@
 ####################################################################
 # NVIDIA SuperPod — Cluster Namespaces
+# 🏞️: A separate lake region/habitat
 # Apply first: kubectl apply -f kubernetes/base/namespaces.yaml
 ####################################################################
 

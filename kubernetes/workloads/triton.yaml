@@ -17,6 +17,14 @@
 #   curl http://<node-ip>:30800/v2/models
 ####################################################################
 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: triton
+  namespace: inference
+automountServiceAccountToken: false
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,6 +47,9 @@ spec:
         prometheus.io/port: "8002"
         prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: triton
+      automountServiceAccountToken: false
+
       containers:
         - name: triton
           image: nvcr.io/nvidia/tritonserver:24.01-py3
@@ -82,10 +93,14 @@ spec:
           resources:
             limits:
               nvidia.com/gpu: 1
+              cpu: "2"
+              memory: 8Gi
+              ephemeral-storage: 2Gi
             requests:
               nvidia.com/gpu: 1
               cpu: "2"
               memory: 8Gi
+              ephemeral-storage: 2Gi
 
           volumeMounts:
             - name: model-repository

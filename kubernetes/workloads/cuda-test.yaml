@@ -8,6 +8,14 @@
 #   kubectl delete job cuda-validation -n training   # cleanup
 ####################################################################
 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cuda-validation
+  namespace: training
+automountServiceAccountToken: false
+
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -26,6 +34,8 @@ spec:
         app: cuda-validation
     spec:
       restartPolicy: Never
+      serviceAccountName: cuda-validation
+      automountServiceAccountToken: false
 
       containers:
         - name: cuda-test
@@ -61,10 +71,13 @@ spec:
           resources:
             limits:
               nvidia.com/gpu: 1
+              memory: 512Mi
+              ephemeral-storage: 1Gi
             requests:
               nvidia.com/gpu: 1
               cpu: 500m
               memory: 512Mi
+              ephemeral-storage: 1Gi
           volumeMounts:
             - name: cuda-samples
               mountPath: /opt/cuda-samples

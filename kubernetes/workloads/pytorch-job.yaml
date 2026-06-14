@@ -8,6 +8,14 @@
 #   kubectl delete job pytorch-benchmark -n training   # cleanup
 ####################################################################
 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pytorch-benchmark
+  namespace: training
+automountServiceAccountToken: false
+
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -25,6 +33,8 @@ spec:
         app: pytorch-benchmark
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: pytorch-benchmark
+      automountServiceAccountToken: false
 
       containers:
         - name: pytorch
@@ -90,10 +100,14 @@ spec:
           resources:
             limits:
               nvidia.com/gpu: 1
+              cpu: "2"
+              memory: 8Gi
+              ephemeral-storage: 2Gi
             requests:
               nvidia.com/gpu: 1
               cpu: "2"
               memory: 8Gi
+              ephemeral-storage: 2Gi
 
           env:
             - name: NCCL_DEBUG

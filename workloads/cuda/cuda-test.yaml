@@ -1,0 +1,83 @@
+####################################################################
+# CUDA Validation Job
+# Confirms GPU access, runs deviceQuery and bandwidthTest.
+#
+# Usage:
+#   # 1. Create the ConfigMap from the script file (once, or after edits)
+#   kubectl create configmap cuda-test-script \
+#     --from-file=cuda-test.sh=workloads/cuda/cuda-test.sh \
+#     --namespace training --dry-run=client -o yaml | kubectl apply -f -
+#
+#   # 2. Run the job
+#   kubectl apply -f workloads/cuda/cuda-test.yaml
+#   kubectl logs -n training job/cuda-validation -f
+#   kubectl delete job cuda-validation -n training   # cleanup
+####################################################################
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cuda-validation
+  namespace: training
+automountServiceAccountToken: false
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cuda-validation
+  namespace: training
+  labels:
+    app: cuda-validation
+    app.kubernetes.io/part-of: superpod
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: cuda-validation
+    spec:
+      restartPolicy: Never
+      serviceAccountName: cuda-validation
+      automountServiceAccountToken: false
+
+      containers:
+        - name: cuda-test
+          image: nvidia/cuda:12.3.2-base-ubuntu22.04
+          command: ["bash", "/scripts/cuda-test.sh"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              memory: 512Mi
+              ephemeral-storage: 1Gi
+            requests:
+              nvidia.com/gpu: 1
+              cpu: 500m
+              memory: 512Mi
+              ephemeral-storage: 1Gi
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: cuda-samples
+              mountPath: /opt/cuda-samples
+              readOnly: true
+
+      volumes:
+        - name: script
+          configMap:
+            name: cuda-test-script
+            defaultMode: 0755
+        - name: cuda-samples
+          hostPath:
+            path: /opt/cuda-samples
+            type: DirectoryOrCreate
+
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+
+      nodeSelector:
+        nvidia.com/gpu.present: "true"

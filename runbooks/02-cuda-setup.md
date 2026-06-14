@@ -85,7 +85,7 @@ cd /opt/cuda-samples/Samples/1_Utilities/bandwidthTest && make
 ### 6. Validate with the Kubernetes job (once cluster is running)
 
 ```bash
-kubectl apply -f kubernetes/workloads/cuda-test.yaml
+kubectl apply -f workloads/cuda/cuda-test.yaml
 kubectl logs -n training job/cuda-validation -f
 # Expected last line: All GPU validation checks PASSED.
 ```
@@ -133,4 +133,4 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 60
 ## Next Steps
 
 - Proceed to [Runbook 03](03-gpu-operator.md) — GPU Operator on Kubernetes
-- Run the [PyTorch benchmark job](../kubernetes/workloads/pytorch-job.yaml) to validate end-to-end compute
+- Run the [PyTorch benchmark job](../workloads/pytorch/pytorch-job.yaml) to validate end-to-end compute

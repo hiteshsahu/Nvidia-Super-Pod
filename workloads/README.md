@@ -17,6 +17,7 @@ workloads/
 │   ├── requirements.txt    # Local pip dependencies
 │   └── pytorch-job.yaml    # Kubernetes Job + ServiceAccount
 └── triton/
+    ├── README.md           # Triton overview, config choices, usage
     └── triton.yaml         # Deployment + Service + ServiceMonitor
 ```
 

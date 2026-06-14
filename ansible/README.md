@@ -216,7 +216,7 @@ flowchart TD
     end
 
     subgraph PB2["Playbook 02 · deploy-stack"]
-        P2A[Apply namespaces\ngpu-operator · monitoring\ninference · training]
+        P2A["Apply namespaces\ngpu-operator · monitoring\ninference · training"]
         P2B[helm install\ngpu-operator v24.3.0]
         P2C{nvidia.com/gpu\nallocatable?}
         P2D[helm install\nkube-prometheus-stack 58.x\nPrometheus + Grafana + node-exporter]
@@ -242,7 +242,7 @@ flowchart TD
         V3[node Ready?]
         V4[nvidia.com/gpu allocatable?]
         V5[GPU Operator pods Running?]
-        V6[Prometheus · Grafana · DCGM Running?]
+        V6["Prometheus · Grafana · DCGM Running?"]
         V7[Triton available replicas?]
         VSUMMARY[Print pass/fail table\nFail playbook if any FAIL]
         V1 --> V2 --> V3 --> V4 --> V5 --> V6 --> V7 --> VSUMMARY

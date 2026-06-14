@@ -146,17 +146,17 @@ flowchart TB
 
 ### Security Group Rules (GPU Node)
 
-| Port | Protocol | Source | Purpose |
-|------|----------|--------|---------|
-| 22 | TCP | `allowed_cidrs` | SSH |
-| 6443 | TCP | `allowed_cidrs` | Kubernetes API |
-| 30000–32767 | TCP | `allowed_cidrs` | NodePort services |
-| 3000 | TCP | `allowed_cidrs` | Grafana (host) |
-| 9090 | TCP | `allowed_cidrs` | Prometheus (host) |
-| 9400 | TCP | `allowed_cidrs` | DCGM Exporter (host) |
-| 9100 | TCP | self | Node Exporter (intra-cluster) |
-| all | all | self | Intra-cluster pod communication |
-| all | all | 0.0.0.0/0 | Egress |
+| Port        | Protocol | Source          | Purpose                         |
+|-------------|----------|-----------------|---------------------------------|
+| 22          | TCP      | `allowed_cidrs` | SSH                             |
+| 6443        | TCP      | `allowed_cidrs` | Kubernetes API                  |
+| 30000–32767 | TCP      | `allowed_cidrs` | NodePort services               |
+| 3000        | TCP      | `allowed_cidrs` | Grafana (host)                  |
+| 9090        | TCP      | `allowed_cidrs` | Prometheus (host)               |
+| 9400        | TCP      | `allowed_cidrs` | DCGM Exporter (host)            |
+| 9100        | TCP      | self            | Node Exporter (intra-cluster)   |
+| all         | all      | self            | Intra-cluster pod communication |
+| all         | all      | 0.0.0.0/0       | Egress                          |
 
 > Set `allowed_cidrs` to your specific CIDR in `terraform.tfvars` before deploying. The default `0.0.0.0/0` is intentionally open for lab convenience — restrict it in any shared or production environment.
 

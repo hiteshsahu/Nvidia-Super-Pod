@@ -55,7 +55,7 @@ flowchart TB
     class OBS obs;
 ```
 
-For more details visit [docs/architecture](./docs/architecture)
+For more details visit [docs/architecture](./docs/architecture.md)
 
 ---
 

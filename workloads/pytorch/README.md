@@ -1,10 +1,10 @@
-# PyTorch ResNet-50 Benchmark
+# PyTorch ResNet-50 Benchmark 🐍
 
 Measures GPU training throughput using a ResNet-50 forward+backward pass loop. Reports samples/sec and ms/step.
 
 ---
 
-## Files
+## 📂 Files
 
 | File               | Purpose                                                            |
 |--------------------|--------------------------------------------------------------------|
@@ -14,7 +14,7 @@ Measures GPU training throughput using a ResNet-50 forward+backward pass loop. R
 
 ---
 
-## Run Locally
+## ▶️ Run Locally
 
 **Prerequisites:** Python 3.9+, NVIDIA driver, CUDA toolkit.
 
@@ -29,7 +29,7 @@ python3 workloads/pytorch/benchmark.py
 BATCH_SIZE=32 python3 workloads/pytorch/benchmark.py
 ```
 
-### Tuning
+### 🎛️ Tuning
 
 All parameters are controlled by environment variables — no file edits needed.
 
@@ -45,7 +45,7 @@ BATCH_SIZE=32 WARMUP_STEPS=3 TIMED_STEPS=20 python3 workloads/pytorch/benchmark.
 
 ---
 
-## Run on Kubernetes (AWS)
+## ☸️ Run on Kubernetes (AWS) 
 
 The Job reads `benchmark.py` from a ConfigMap so the script can be updated without rebuilding any image.
 
@@ -75,7 +75,7 @@ env:
 
 ---
 
-## Expected Output
+## 📤 Expected Output
 
 ```
 GPU      : Tesla T4

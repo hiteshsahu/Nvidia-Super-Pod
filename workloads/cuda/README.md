@@ -1,4 +1,4 @@
-# CUDA Validation
+# 📟 CUDA Validation
 
 Validates end-to-end GPU access by running three checks in sequence:
 
@@ -11,7 +11,7 @@ Validates end-to-end GPU access by running three checks in sequence:
 
 ---
 
-## Files
+## 📂 Files
 
 | File             | Purpose                                                                        |
 |------------------|--------------------------------------------------------------------------------|
@@ -21,7 +21,7 @@ Validates end-to-end GPU access by running three checks in sequence:
 
 ---
 
-## Run Locally (Docker)
+## 🐳 Run Locally (Docker)
 
 The base CUDA image does not ship `deviceQuery` or `bandwidthTest`. The `Dockerfile` compiles them from
 the [NVIDIA CUDA Samples](https://github.com/NVIDIA/cuda-samples) repo so local output is identical to what runs on AWS.
@@ -74,7 +74,7 @@ All GPU validation checks PASSED.
 
 ---
 
-## Run on Kubernetes (AWS)
+## ☸️ Run on Kubernetes (AWS)
 
 The Job reads the script from a ConfigMap so you can update it without rebuilding anything.
 

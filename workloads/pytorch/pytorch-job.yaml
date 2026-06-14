@@ -1,0 +1,102 @@
+####################################################################
+# PyTorch GPU Benchmark Job
+# Runs a synthetic ResNet-50 throughput benchmark on a single T4 GPU.
+#
+# Usage:
+#   # 1. Create the ConfigMap from the script file (once, or after edits)
+#   kubectl create configmap pytorch-benchmark-script \
+#     --from-file=benchmark.py=workloads/pytorch/benchmark.py \
+#     --namespace training --dry-run=client -o yaml | kubectl apply -f -
+#
+#   # 2. Run the job
+#   kubectl apply -f workloads/pytorch/pytorch-job.yaml
+#   kubectl logs -n training job/pytorch-benchmark -f
+#   kubectl delete job pytorch-benchmark -n training   # cleanup
+####################################################################
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pytorch-benchmark
+  namespace: training
+automountServiceAccountToken: false
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pytorch-benchmark
+  namespace: training
+  labels:
+    app: pytorch-benchmark
+    app.kubernetes.io/part-of: superpod
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: pytorch-benchmark
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: pytorch-benchmark
+      automountServiceAccountToken: false
+
+      containers:
+        - name: pytorch
+          image: nvcr.io/nvidia/pytorch:24.01-py3
+          command: ["python3", "/scripts/benchmark.py"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: "2"
+              memory: 8Gi
+              ephemeral-storage: 2Gi
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "2"
+              memory: 8Gi
+              ephemeral-storage: 2Gi
+
+          env:
+            - name: BATCH_SIZE
+              value: "64"
+            - name: WARMUP_STEPS
+              value: "5"
+            - name: TIMED_STEPS
+              value: "50"
+            - name: NCCL_DEBUG
+              value: WARN
+            - name: PYTHONUNBUFFERED
+              value: "1"
+
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: data
+              mountPath: /mnt/data
+            - name: shm
+              mountPath: /dev/shm
+
+      volumes:
+        - name: script
+          configMap:
+            name: pytorch-benchmark-script
+            defaultMode: 0755
+        - name: data
+          hostPath:
+            path: /mnt/data
+            type: DirectoryOrCreate
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+
+      nodeSelector:
+        nvidia.com/gpu.present: "true"

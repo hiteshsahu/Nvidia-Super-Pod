@@ -9,3 +9,8 @@ Short, self-contained records of significant design choices made while building 
 | [ADR-003](ADR-003-kube-prometheus-stack-bundle.md) | kube-prometheus-stack bundle | Accepted |
 | [ADR-004](ADR-004-ebs-gp3-volumes.md) | EBS gp3 volumes | Accepted |
 | [ADR-005](ADR-005-elastic-ip-stable-address.md) | Elastic IP for stable addressing | Accepted |
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

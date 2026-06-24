@@ -114,3 +114,8 @@ docker run --gpus all               kubectl apply (Job)
 ```
 
 Both paths execute the same `cuda-test.sh` against the same binaries at the same path — output is directly comparable.
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

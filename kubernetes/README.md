@@ -248,3 +248,8 @@ kubectl logs -n training job/pytorch-benchmark -f
 | Triton metrics | 30802 | HTTP | `/metrics` |
 | Prometheus | ClusterIP only | HTTP | port-forward 9090 |
 | DCGM Exporter | ClusterIP only | HTTP | port-forward 9400 |
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

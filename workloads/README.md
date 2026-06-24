@@ -212,3 +212,8 @@ kubectl delete -f workloads/triton/triton.yaml
 | CUDA validation | Not applicable — run `nvidia-smi` directly | `kubectl apply` + ConfigMap |
 | PyTorch benchmark | `python3 benchmark.py` | `kubectl apply` + ConfigMap |
 | Triton | Docker: `docker run --gpus all nvcr.io/nvidia/tritonserver:24.01-py3` | `kubectl apply -f triton.yaml` |
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

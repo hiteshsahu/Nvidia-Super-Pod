@@ -28,3 +28,8 @@ Validation blocks on instance_type and environment are deliberate.
 Includes pre-built SSH command, all dashboard URLs, and a validate_gpu_command output.
 
 After terraform apply you get everything you need printed directly.
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

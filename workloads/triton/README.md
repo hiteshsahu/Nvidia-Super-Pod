@@ -68,3 +68,8 @@ curl http://$NODE_IP:30802/metrics
 ```bash
 kubectl delete -f workloads/triton/triton.yaml
 ```
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

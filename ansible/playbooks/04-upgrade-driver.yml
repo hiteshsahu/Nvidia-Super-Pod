@@ -1,4 +1,7 @@
 ---
+# Copyright 2026 Hitesh Kumar Sahu — https://hiteshsahu.com
+# SPDX-License-Identifier: Apache-2.0
+
 # Playbook 04 — Day-2: Upgrade NVIDIA driver
 #
 # Safe upgrade sequence:

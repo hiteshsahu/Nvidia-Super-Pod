@@ -1,4 +1,7 @@
 ---
+# Copyright 2026 Hitesh Kumar Sahu — https://hiteshsahu.com
+# SPDX-License-Identifier: Apache-2.0
+
 # Shared variables for all GPU nodes.
 # Version pins here must stay in sync with terraform/variables.tf defaults.
 

@@ -1,4 +1,7 @@
 ---
+# Copyright 2026 Hitesh Kumar Sahu — https://hiteshsahu.com
+# SPDX-License-Identifier: Apache-2.0
+
 # AWS EC2 dynamic inventory
 # Requires: pip install boto3 botocore  +  collection amazon.aws
 # Usage: ansible-inventory -i inventory/aws_ec2.yml --list

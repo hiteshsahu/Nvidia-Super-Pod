@@ -120,3 +120,8 @@ python3 benchmark.py                kubectl apply pytorch-job.yaml
 ```
 
 Same script, same output format — results are directly comparable between local and AWS.
+
+---
+
+## License
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*

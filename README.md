@@ -2,6 +2,7 @@
 > A hands-on infrastructure project simulating enterprise-grade NVIDIA GPU cluster provisioning, orchestration, and observability 
 
 ![](./img/cover.jpg)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Built on AWS using Terraform, Ansible, Cloud-Init, and Kubernetes.
 - Automated deployment of NVIDIA GPU Operator, device plugins, CUDA runtime, and observability stack (DCGM Exporter, Prometheus, Grafana).
@@ -21,6 +22,7 @@ This project provisions and operates a GPU-accelerated infrastructure stack mode
 - Expandable to bare-metal Linux nodes
 
 ![](./img/illustration.jpg)
+
 ---
 
 ## 🏗️ Architecture

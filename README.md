@@ -1,12 +1,13 @@
 # 🐸 NVIDIA SuperPod — GPU Infrastructure Lab
 > A hands-on infrastructure project simulating enterprise-grade NVIDIA GPU cluster provisioning, orchestration, and observability 
 
+![](./img/cover.jpg)
+
 Built on AWS using Terraform, Ansible, Cloud-Init, and Kubernetes.
 - Automated deployment of NVIDIA GPU Operator, device plugins, CUDA runtime, and observability stack (DCGM Exporter, Prometheus, Grafana).
 - GPU monitoring, alerting, and AI workload execution for PyTorch and LLM inference workloads.
 
 
-![](./img/cover.jpg)
 
 ---
 
@@ -19,6 +20,7 @@ This project provisions and operates a GPU-accelerated infrastructure stack mode
 - Local Kubernetes clusters (kind / minikube with GPU passthrough)
 - Expandable to bare-metal Linux nodes
 
+![](./img/illustration.jpg)
 ---
 
 ## 🏗️ Architecture
